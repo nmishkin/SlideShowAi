@@ -11,8 +11,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import java.io.File
 import kotlinx.coroutines.delay
@@ -88,6 +90,21 @@ fun SlideshowScreen(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+            
+            // Display Year
+            val year = remember(currentFile) { getPhotoYear(currentFile) }
+            if (year != null) {
+                Text(
+                    text = year,
+                    color = Color.White.copy(alpha = 0.7f),
+                    style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp)
+                        .background(Color.Black.copy(alpha = 0.3f), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
         } else {
             Text(
                 text = "No photos found",
@@ -95,5 +112,18 @@ fun SlideshowScreen(
                 modifier = Modifier.align(Alignment.Center)
             )
         }
+    }
+}
+
+private fun getPhotoYear(file: File): String? {
+    return try {
+        val exif = androidx.exifinterface.media.ExifInterface(file)
+        val date = exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_DATETIME_ORIGINAL)
+            ?: exif.getAttribute(androidx.exifinterface.media.ExifInterface.TAG_DATETIME)
+        
+        // Format is usually "yyyy:MM:dd HH:mm:ss"
+        date?.split(":", " ")?.firstOrNull()
+    } catch (e: Exception) {
+        null
     }
 }
