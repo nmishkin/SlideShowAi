@@ -91,20 +91,42 @@ fun SlideshowScreen(
                 modifier = Modifier.fillMaxSize()
             )
             
-            // Display Year
+            // Display Metadata (Year & Location)
+            val context = androidx.compose.ui.platform.LocalContext.current
+            var location by remember { mutableStateOf<String?>(null) }
             val year = remember(currentFile) { getPhotoYear(currentFile) }
-            if (year != null) {
-                Text(
-                    text = year,
-                    color = Color.White.copy(alpha = 0.7f),
-                    style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+            
+            LaunchedEffect(currentFile) {
+                location = getPhotoLocation(currentFile, context)
+            }
+
+            if (year != null || location != null) {
+                androidx.compose.foundation.layout.Column(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(16.dp)
                         .background(Color.Black.copy(alpha = 0.3f), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    if (year != null) {
+                        Text(
+                            text = year,
+                            color = Color.White.copy(alpha = 0.9f),
+                            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                    if (location != null) {
+                        Text(
+                            text = location!!,
+                            color = Color.White.copy(alpha = 0.7f),
+                            style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
             }
+
+
         } else {
             Text(
                 text = "No photos found",
@@ -125,5 +147,64 @@ private fun getPhotoYear(file: File): String? {
         date?.split(":", " ")?.firstOrNull()
     } catch (e: Exception) {
         null
+    }
+}
+
+private suspend fun getPhotoLocation(file: File, context: android.content.Context): String? {
+    return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val exif = androidx.exifinterface.media.ExifInterface(file)
+            val latLong = exif.latLong
+            if (latLong != null) {
+                val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
+                // Basic check for API level, but getFromLocation is available since API 1
+                val latitude = latLong[0]
+                val longitude = latLong[1]
+                val latLongStr = "$latitude, $longitude"
+
+                @Suppress("DEPRECATION")
+                val addresses = geocoder.getFromLocation(latitude, longitude, 1)
+                if (addresses.isNullOrEmpty()) {
+                    latLongStr
+                } else {
+                    val address = addresses[0]
+                    // Try to get City, Country or just Country
+                    val city = address.locality ?: address.subAdminArea
+                    val adminArea = address.adminArea
+                    val countryCode = address.countryCode
+                    val country = address.countryName
+                    if (countryCode == "US")
+                        if (adminArea != null)
+                            if (city != null)
+                                "$city, $adminArea"
+                            else
+                                latLongStr
+                        else
+                            if (city != null)
+                                city
+                            else
+                                country
+                    else
+                        if (country != null)
+                            if (city != null)
+                                "$city, $country"
+                            else
+                                if (adminArea != null)
+                                    "$adminArea, $country"
+                                else
+                                    if (country != null)
+                                        country
+                                    else
+                                        latLongStr
+                        else
+                            latLongStr
+                }
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 }

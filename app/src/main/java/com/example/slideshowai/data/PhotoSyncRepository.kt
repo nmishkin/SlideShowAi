@@ -44,7 +44,9 @@ class PhotoSyncRepository(private val context: Context) {
 
             onProgress("Connecting to $host...")
             ftp.connect(host, port)
-            ftp.login(username, password)
+            if (!ftp.login(username, password)) {
+                throw Exception("FTP Login failed for user: $username")
+            }
             ftp.enterLocalPassiveMode()
             ftp.setFileType(FTP.BINARY_FILE_TYPE)
 
@@ -96,7 +98,7 @@ class PhotoSyncRepository(private val context: Context) {
     }
 
     private fun isImageFile(name: String): Boolean {
-        val extensions = listOf(".jpg", ".jpeg", ".png", ".webp")
+        val extensions = listOf(".jpg", ".jpeg", ".png", ".webp", ".heic")
         return extensions.any { name.lowercase().endsWith(it) }
     }
 }
