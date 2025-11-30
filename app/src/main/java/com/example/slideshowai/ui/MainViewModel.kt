@@ -19,7 +19,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var statusMessage by mutableStateOf("Ready")
         private set
 
-    var serverUri by mutableStateOf("")
+    var serverHost by mutableStateOf("")
+        private set
+    var serverPath by mutableStateOf("")
+        private set
+    var serverUsername by mutableStateOf("")
+        private set
+    var serverPassword by mutableStateOf("")
         private set
         
     var localPhotos by mutableStateOf<List<File>>(emptyList())
@@ -29,10 +35,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set
 
     init {
-        // Load saved URI
+        // Load saved config
         viewModelScope.launch {
-            preferencesRepository.serverUri.collect { uri ->
-                serverUri = uri
+            kotlinx.coroutines.flow.combine(
+                preferencesRepository.serverHost,
+                preferencesRepository.serverPath,
+                preferencesRepository.serverUsername
+            ) { host, path, user ->
+                Triple(host, path, user)
+            }.collect { (host, path, user) ->
+                serverHost = host
+                serverPath = path
+                serverUsername = user
+                
                 // Load local photos immediately
                 localPhotos = photoSyncRepository.getLocalPhotos()
                 isInitialized = true
@@ -40,10 +55,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
         
-    fun updateServerUri(uri: String) {
-        serverUri = uri
+    fun updateServerConfig(host: String, path: String, user: String, pass: String) {
+        serverHost = host
+        serverPath = path
+        serverUsername = user
+        serverPassword = pass
+        
         viewModelScope.launch {
-            preferencesRepository.saveServerUri(uri)
+            preferencesRepository.saveServerConfig(host, path, user)
         }
     }
     
@@ -51,7 +70,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             statusMessage = "Starting sync..."
             try {
-                localPhotos = photoSyncRepository.syncPhotos(serverUri) { progress ->
+                localPhotos = photoSyncRepository.syncPhotos(serverHost, serverPath, serverUsername, serverPassword) { progress ->
                     statusMessage = progress
                 }
                 statusMessage = "Sync Complete. ${localPhotos.size} photos."

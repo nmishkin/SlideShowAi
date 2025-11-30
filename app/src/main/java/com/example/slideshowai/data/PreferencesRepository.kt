@@ -14,17 +14,20 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "se
 class PreferencesRepository(private val context: Context) {
     
     companion object {
-        val SERVER_URI_KEY = stringPreferencesKey("server_uri")
+        val SERVER_HOST_KEY = stringPreferencesKey("server_host")
+        val SERVER_PATH_KEY = stringPreferencesKey("server_path")
+        val SERVER_USERNAME_KEY = stringPreferencesKey("server_username")
     }
 
-    val serverUri: Flow<String> = context.dataStore.data
-        .map { preferences ->
-            preferences[SERVER_URI_KEY] ?: ""
-        }
+    val serverHost: Flow<String> = context.dataStore.data.map { it[SERVER_HOST_KEY] ?: "" }
+    val serverPath: Flow<String> = context.dataStore.data.map { it[SERVER_PATH_KEY] ?: "" }
+    val serverUsername: Flow<String> = context.dataStore.data.map { it[SERVER_USERNAME_KEY] ?: "" }
 
-    suspend fun saveServerUri(uri: String) {
+    suspend fun saveServerConfig(host: String, path: String, username: String) {
         context.dataStore.edit { preferences ->
-            preferences[SERVER_URI_KEY] = uri
+            preferences[SERVER_HOST_KEY] = host
+            preferences[SERVER_PATH_KEY] = path
+            preferences[SERVER_USERNAME_KEY] = username
         }
     }
 }

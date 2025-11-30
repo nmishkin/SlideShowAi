@@ -41,9 +41,14 @@ class MainActivity : ComponentActivity() {
                     NavHost(navController = navController, startDestination = "settings") {
                         composable("settings") {
                             SettingsScreen(
-                                serverUri = viewModel.serverUri,
+                                serverHost = viewModel.serverHost,
+                                serverPath = viewModel.serverPath,
+                                serverUsername = viewModel.serverUsername,
+                                serverPassword = viewModel.serverPassword,
                                 statusMessage = viewModel.statusMessage,
-                                onUriChange = { viewModel.updateServerUri(it) },
+                                onConfigChange = { host, path, user, pass -> 
+                                    viewModel.updateServerConfig(host, path, user, pass) 
+                                },
                                 onSyncClick = { viewModel.startSync() },
                                 onStartSlideshow = { navController.navigate("slideshow") },
                                 photoCount = viewModel.localPhotos.size

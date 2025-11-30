@@ -7,12 +7,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    serverUri: String,
+    serverHost: String,
+    serverPath: String,
+    serverUsername: String,
+    serverPassword: String,
     statusMessage: String,
-    onUriChange: (String) -> Unit,
+    onConfigChange: (String, String, String, String) -> Unit,
     onSyncClick: () -> Unit,
     onStartSlideshow: () -> Unit,
     photoCount: Int
@@ -29,14 +35,39 @@ fun SettingsScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Server Configuration", style = MaterialTheme.typography.titleMedium)
+            Text("FTP Configuration", style = MaterialTheme.typography.titleMedium)
             
             OutlinedTextField(
-                value = serverUri,
-                onValueChange = onUriChange,
-                label = { Text("FTP URI (ftp://user:pass@host/path)") },
+                value = serverHost,
+                onValueChange = { onConfigChange(it, serverPath, serverUsername, serverPassword) },
+                label = { Text("Host (e.g. 192.168.1.5)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
+            )
+
+            OutlinedTextField(
+                value = serverPath,
+                onValueChange = { onConfigChange(serverHost, it, serverUsername, serverPassword) },
+                label = { Text("Path (e.g. /photos)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = serverUsername,
+                onValueChange = { onConfigChange(serverHost, serverPath, it, serverPassword) },
+                label = { Text("Username") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            OutlinedTextField(
+                value = serverPassword,
+                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, it) },
+                label = { Text("Password") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation()
             )
             
             Button(
