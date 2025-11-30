@@ -20,7 +20,9 @@ fun SlideshowScreen(
     mediaItems: List<File>,
     onBack: () -> Unit
 ) {
-    var currentIndex by remember { mutableIntStateOf(0) }
+    // Shuffle the list so photos are shown in random order
+    val shuffledItems = remember(mediaItems) { mediaItems.shuffled() }
+    var currentIndex by remember(mediaItems) { mutableIntStateOf(0) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     DisposableEffect(Unit) {
@@ -39,11 +41,11 @@ fun SlideshowScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(shuffledItems) {
         while (true) {
             delay(5000) // 5 seconds per slide
-            if (mediaItems.isNotEmpty()) {
-                currentIndex = (currentIndex + 1) % mediaItems.size
+            if (shuffledItems.isNotEmpty()) {
+                currentIndex = (currentIndex + 1) % shuffledItems.size
             }
         }
     }
@@ -54,8 +56,10 @@ fun SlideshowScreen(
             .background(Color.Black)
             .clickable(onClick = onBack)
     ) {
-        if (mediaItems.isNotEmpty()) {
-            val currentFile = mediaItems[currentIndex]
+        if (shuffledItems.isNotEmpty()) {
+            // Safety check for index
+            val safeIndex = currentIndex.coerceIn(shuffledItems.indices)
+            val currentFile = shuffledItems[safeIndex]
             Image(
                 painter = rememberAsyncImagePainter(currentFile),
                 contentDescription = null,
