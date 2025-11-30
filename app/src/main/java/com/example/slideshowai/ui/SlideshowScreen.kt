@@ -3,6 +3,7 @@ package com.example.slideshowai.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
@@ -10,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.rememberAsyncImagePainter
 import java.io.File
@@ -54,6 +56,26 @@ fun SlideshowScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .pointerInput(Unit) {
+                var totalDrag = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { totalDrag = 0f },
+                    onDragEnd = {
+                        val threshold = 50f
+                        if (totalDrag > threshold) {
+                            // Swipe Right -> Previous
+                            currentIndex = if (currentIndex - 1 < 0) shuffledItems.size - 1 else currentIndex - 1
+                        } else if (totalDrag < -threshold) {
+                            // Swipe Left -> Next
+                            currentIndex = (currentIndex + 1) % shuffledItems.size
+                        }
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        change.consume()
+                        totalDrag += dragAmount
+                    }
+                )
+            }
             .clickable(onClick = onBack)
     ) {
         if (shuffledItems.isNotEmpty()) {
