@@ -25,6 +25,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var localPhotos by mutableStateOf<List<File>>(emptyList())
         private set
 
+    var isInitialized by mutableStateOf(false)
+        private set
+
     init {
         // Load saved URI
         viewModelScope.launch {
@@ -32,6 +35,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 serverUri = uri
                 // Load local photos immediately
                 localPhotos = photoSyncRepository.getLocalPhotos()
+                isInitialized = true
             }
         }
     }

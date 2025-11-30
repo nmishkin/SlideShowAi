@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
@@ -29,6 +30,14 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    LaunchedEffect(viewModel.isInitialized) {
+                        if (viewModel.isInitialized && viewModel.localPhotos.isNotEmpty()) {
+                            navController.navigate("slideshow") {
+                                popUpTo("settings") { inclusive = false }
+                            }
+                        }
+                    }
+
                     NavHost(navController = navController, startDestination = "settings") {
                         composable("settings") {
                             SettingsScreen(
