@@ -1,5 +1,6 @@
 package com.example.slideshowai.ui
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,36 +23,125 @@ import kotlinx.coroutines.delay
 @Composable
 fun SlideshowScreen(
     mediaItems: List<File>,
+    quietHoursStart: String,
+    quietHoursEnd: String,
     onBack: () -> Unit
 ) {
     // Shuffle the list so photos are shown in random order
     val shuffledItems = remember(mediaItems) { mediaItems.shuffled() }
     var currentIndex by remember(mediaItems) { mutableIntStateOf(0) }
+    var isQuietHour by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
-    DisposableEffect(Unit) {
+    
+    // Check for Quiet Hours
+    LaunchedEffect(quietHoursStart, quietHoursEnd) {
+        while (true) {
+            val now = java.time.LocalTime.now()
+            try {
+                val start = java.time.LocalTime.parse(quietHoursStart)
+                val end = java.time.LocalTime.parse(quietHoursEnd)
+                
+                isQuietHour = if (start.isBefore(end)) {
+                    now.isAfter(start) && now.isBefore(end)
+                } else {
+                    // Spans midnight (e.g. 22:00 to 07:00)
+                    now.isAfter(start) || now.isBefore(end)
+                }
+            } catch (e: Exception) {
+                // Invalid time format, ignore
+                isQuietHour = false
+            }
+            delay(60000) // Check every minute
+        }
+    }
+
+    DisposableEffect(isQuietHour) {
         val window = (context as? android.app.Activity)?.window
         if (window != null) {
             val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
             insetsController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             insetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            
+            if (isQuietHour) {
+                // Allow sleep
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+                    (context as? android.app.Activity)?.setShowWhenLocked(false)
+                    (context as? android.app.Activity)?.setTurnScreenOn(false)
+                } else {
+                    @Suppress("DEPRECATION")
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+                    @Suppress("DEPRECATION")
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+                }
+            } else {
+                // Keep screen on and Wake up
+                window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+                    (context as? android.app.Activity)?.setShowWhenLocked(true)
+                    (context as? android.app.Activity)?.setTurnScreenOn(true)
+                } else {
+                    @Suppress("DEPRECATION")
+                    window.addFlags(android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+                    @Suppress("DEPRECATION")
+                    window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+                }
+
+                // Force wake up using PowerManager
+                val powerManager = context.getSystemService(android.content.Context.POWER_SERVICE) as android.os.PowerManager
+                val wakeLock = powerManager.newWakeLock(
+                    android.os.PowerManager.FULL_WAKE_LOCK or android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    "SlideShowAi:WakeUp"
+                )
+                wakeLock.acquire(3000) // Hold for 3 seconds to ensure screen turns on
+            }
         }
         onDispose {
             val window = (context as? android.app.Activity)?.window
             if (window != null) {
                 val insetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
                 insetsController.show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+                    (context as? android.app.Activity)?.setShowWhenLocked(false)
+                    (context as? android.app.Activity)?.setTurnScreenOn(false)
+                } else {
+                    @Suppress("DEPRECATION")
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+                    @Suppress("DEPRECATION")
+                    window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+                }
             }
         }
     }
 
-    LaunchedEffect(shuffledItems) {
+    LaunchedEffect(shuffledItems, isQuietHour) {
         while (true) {
             delay(5000) // 5 seconds per slide
-            if (shuffledItems.isNotEmpty()) {
+            if (!isQuietHour && shuffledItems.isNotEmpty()) {
                 currentIndex = (currentIndex + 1) % shuffledItems.size
             }
         }
+    }
+    
+    if (isQuietHour) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .clickable(onClick = onBack)
+        ) {
+            Text(
+                text = "Zzz...",
+                color = Color.DarkGray,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+        return
     }
 
     Box(
@@ -84,6 +174,8 @@ fun SlideshowScreen(
             // Safety check for index
             val safeIndex = currentIndex.coerceIn(shuffledItems.indices)
             val currentFile = shuffledItems[safeIndex]
+            Log.d("SlideshowScreen", "Displaying file: ${currentFile.name}")
+
             Image(
                 painter = rememberAsyncImagePainter(currentFile),
                 contentDescription = null,
@@ -192,10 +284,7 @@ private suspend fun getPhotoLocation(file: File, context: android.content.Contex
                                 if (adminArea != null)
                                     "$adminArea, $country"
                                 else
-                                    if (country != null)
-                                        country
-                                    else
-                                        latLongStr
+                                    country
                         else
                             latLongStr
                 }

@@ -28,6 +28,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var serverPassword by mutableStateOf("")
         private set
         
+    var quietHoursStart by mutableStateOf("22:00")
+        private set
+    var quietHoursEnd by mutableStateOf("07:00")
+        private set
+        
     var localPhotos by mutableStateOf<List<File>>(emptyList())
         private set
 
@@ -40,13 +45,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             kotlinx.coroutines.flow.combine(
                 preferencesRepository.serverHost,
                 preferencesRepository.serverPath,
-                preferencesRepository.serverUsername
-            ) { host, path, user ->
-                Triple(host, path, user)
-            }.collect { (host, path, user) ->
-                serverHost = host
-                serverPath = path
-                serverUsername = user
+                preferencesRepository.serverUsername,
+                preferencesRepository.quietHoursStart,
+                preferencesRepository.quietHoursEnd
+            ) { host, path, user, qStart, qEnd ->
+                Config(host, path, user, qStart, qEnd)
+            }.collect { config ->
+                serverHost = config.host
+                serverPath = config.path
+                serverUsername = config.username
+                quietHoursStart = config.quietStart
+                quietHoursEnd = config.quietEnd
                 
                 // Load local photos immediately
                 localPhotos = photoSyncRepository.getLocalPhotos()
@@ -54,15 +63,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+    
+    data class Config(val host: String, val path: String, val username: String, val quietStart: String, val quietEnd: String)
         
-    fun updateServerConfig(host: String, path: String, user: String, pass: String) {
+    fun updateServerConfig(host: String, path: String, user: String, pass: String, qStart: String, qEnd: String) {
         serverHost = host
         serverPath = path
         serverUsername = user
         serverPassword = pass
+        quietHoursStart = qStart
+        quietHoursEnd = qEnd
         
         viewModelScope.launch {
-            preferencesRepository.saveServerConfig(host, path, user)
+            preferencesRepository.saveServerConfig(host, path, user, qStart, qEnd)
         }
     }
     

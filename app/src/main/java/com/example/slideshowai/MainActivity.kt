@@ -45,9 +45,11 @@ class MainActivity : ComponentActivity() {
                                 serverPath = viewModel.serverPath,
                                 serverUsername = viewModel.serverUsername,
                                 serverPassword = viewModel.serverPassword,
+                                quietHoursStart = viewModel.quietHoursStart,
+                                quietHoursEnd = viewModel.quietHoursEnd,
                                 statusMessage = viewModel.statusMessage,
-                                onConfigChange = { host, path, user, pass -> 
-                                    viewModel.updateServerConfig(host, path, user, pass) 
+                                onConfigChange = { host, path, user, pass, qStart, qEnd -> 
+                                    viewModel.updateServerConfig(host, path, user, pass, qStart, qEnd) 
                                 },
                                 onSyncClick = { viewModel.startSync() },
                                 onStartSlideshow = { navController.navigate("slideshow") },
@@ -57,6 +59,8 @@ class MainActivity : ComponentActivity() {
                         composable("slideshow") {
                             SlideshowScreen(
                                 mediaItems = viewModel.localPhotos,
+                                quietHoursStart = viewModel.quietHoursStart,
+                                quietHoursEnd = viewModel.quietHoursEnd,
                                 onBack = { navController.popBackStack() }
                             )
                         }
