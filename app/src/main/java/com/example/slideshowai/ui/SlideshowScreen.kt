@@ -25,7 +25,8 @@ fun SlideshowScreen(
     mediaItems: List<File>,
     quietHoursStart: String,
     quietHoursEnd: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onGetLocation: suspend (File) -> String?
 ) {
     // Shuffle the list so photos are shown in random order
     val shuffledItems = remember(mediaItems) { mediaItems.shuffled() }
@@ -189,7 +190,7 @@ fun SlideshowScreen(
             val year = remember(currentFile) { getPhotoYear(currentFile) }
             
             LaunchedEffect(currentFile) {
-                location = getPhotoLocation(currentFile, context)
+                location = onGetLocation(currentFile)
             }
 
             if (year != null || location != null) {
@@ -239,61 +240,5 @@ private fun getPhotoYear(file: File): String? {
         date?.split(":", " ")?.firstOrNull()
     } catch (e: Exception) {
         null
-    }
-}
-
-private suspend fun getPhotoLocation(file: File, context: android.content.Context): String? {
-    return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-        try {
-            val exif = androidx.exifinterface.media.ExifInterface(file)
-            val latLong = exif.latLong
-            if (latLong != null) {
-                val geocoder = android.location.Geocoder(context, java.util.Locale.getDefault())
-                // Basic check for API level, but getFromLocation is available since API 1
-                val latitude = latLong[0]
-                val longitude = latLong[1]
-                val latLongStr = "$latitude, $longitude"
-
-                @Suppress("DEPRECATION")
-                val addresses = geocoder.getFromLocation(latitude, longitude, 1)
-                if (addresses.isNullOrEmpty()) {
-                    latLongStr
-                } else {
-                    val address = addresses[0]
-                    // Try to get City, Country or just Country
-                    val city = address.locality ?: address.subAdminArea
-                    val adminArea = address.adminArea
-                    val countryCode = address.countryCode
-                    val country = address.countryName
-                    if (countryCode == "US")
-                        if (adminArea != null)
-                            if (city != null)
-                                "$city, $adminArea"
-                            else
-                                latLongStr
-                        else
-                            if (city != null)
-                                city
-                            else
-                                country
-                    else
-                        if (country != null)
-                            if (city != null)
-                                "$city, $country"
-                            else
-                                if (adminArea != null)
-                                    "$adminArea, $country"
-                                else
-                                    country
-                        else
-                            latLongStr
-                }
-            } else {
-                null
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
     }
 }

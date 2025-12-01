@@ -61,7 +61,8 @@ class MainActivity : ComponentActivity() {
                                 mediaItems = viewModel.localPhotos,
                                 quietHoursStart = viewModel.quietHoursStart,
                                 quietHoursEnd = viewModel.quietHoursEnd,
-                                onBack = { navController.popBackStack() }
+                                onBack = { navController.popBackStack() },
+                                onGetLocation = { file -> viewModel.getLocation(file) }
                             )
                         }
                     }

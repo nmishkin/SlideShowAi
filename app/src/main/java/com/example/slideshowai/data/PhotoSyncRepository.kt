@@ -1,6 +1,7 @@
 package com.example.slideshowai.data
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.net.ftp.FTP
@@ -35,6 +36,7 @@ class PhotoSyncRepository(private val context: Context) {
     }
 
     private fun syncFtp(host: String, path: String, user: String, pass: String, onProgress: (String) -> Unit) {
+        Log.d("PhotoSyncRepository", "syncFtp called with host: $host, path: $path, user: $user")
         val ftp = FTPClient()
         try {
             val port = 21 // Default FTP port
@@ -57,10 +59,12 @@ class PhotoSyncRepository(private val context: Context) {
             }
 
             val remoteFiles = ftp.listFiles().filter { it.isFile && isImageFile(it.name) }
+            Log.d("PhotoSyncRepository", "# of remote files: ${remoteFiles.size}")
             val remoteFileNames = remoteFiles.map { it.name }.toSet()
             
             // 1. Delete local files not on server
             val localFiles = getLocalPhotos()
+            Log.d("PhotoSyncRepository", "# of local files: ${localFiles.size}")
             localFiles.forEach { localFile ->
                 if (!remoteFileNames.contains(localFile.name)) {
                     onProgress("Deleting ${localFile.name}...")
