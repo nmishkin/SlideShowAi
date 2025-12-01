@@ -25,6 +25,7 @@ fun SlideshowScreen(
     mediaItems: List<File>,
     quietHoursStart: String,
     quietHoursEnd: String,
+    photoDurationMillis: Long,
     onBack: () -> Unit,
     onGetLocation: suspend (File) -> String?,
     onPhotoShown: (File) -> Unit
@@ -123,7 +124,7 @@ fun SlideshowScreen(
 
     LaunchedEffect(shuffledItems, isQuietHour) {
         while (true) {
-            delay(5000) // 5 seconds per slide
+            delay(photoDurationMillis)
             if (!isQuietHour && shuffledItems.isNotEmpty()) {
                 currentIndex = (currentIndex + 1) % shuffledItems.size
             }

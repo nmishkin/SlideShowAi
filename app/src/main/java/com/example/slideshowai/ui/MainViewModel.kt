@@ -41,6 +41,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var smartShuffleDays by mutableIntStateOf(30)
         private set
         
+    var photoDuration by mutableStateOf("00:00:05")
+        private set
+        
     var localPhotos by mutableStateOf<List<File>>(emptyList())
         private set
         
@@ -65,9 +68,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 serverConfigFlow,
                 preferencesRepository.quietHoursStart,
                 preferencesRepository.quietHoursEnd,
-                preferencesRepository.smartShuffleDays
-            ) { (host, path, user), qStart, qEnd, days ->
-                Config(host, path, user, qStart, qEnd, days)
+                preferencesRepository.smartShuffleDays,
+                preferencesRepository.photoDuration
+            ) { (host, path, user), qStart, qEnd, days, duration ->
+                Config(host, path, user, qStart, qEnd, days, duration)
             }.collect { config ->
                 serverHost = config.host
                 serverPath = config.path
@@ -75,6 +79,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 quietHoursStart = config.quietStart
                 quietHoursEnd = config.quietEnd
                 smartShuffleDays = config.shuffleDays
+                photoDuration = config.duration
                 
                 // Load local photos immediately
                 refreshPhotos()
@@ -102,21 +107,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
-    data class Config(val host: String, val path: String, val username: String, val quietStart: String, val quietEnd: String, val shuffleDays: Int)
+    data class Config(val host: String, val path: String, val username: String, val quietStart: String, val quietEnd: String, val shuffleDays: Int, val duration: String)
         
-    fun updateServerConfig(host: String, path: String, user: String, pass: String, qStart: String, qEnd: String, shuffleDays: String) {
+    fun updateServerConfig(host: String, path: String, user: String, pass: String, qStart: String, qEnd: String, shuffleDays: String, duration: String) {
         serverHost = host
         serverPath = path
         serverUsername = user
         serverPassword = pass
         quietHoursStart = qStart
         quietHoursEnd = qEnd
+        photoDuration = duration
         
         val days = shuffleDays.toIntOrNull() ?: 30
         smartShuffleDays = days
         
         viewModelScope.launch {
-            preferencesRepository.saveServerConfig(host, path, user, qStart, qEnd, days)
+            preferencesRepository.saveServerConfig(host, path, user, qStart, qEnd, days, duration)
+        }
+    }
+    
+    fun getPhotoDurationMillis(): Long {
+        return try {
+            val parts = photoDuration.split(":")
+            val hours = parts.getOrNull(0)?.toLongOrNull() ?: 0L
+            val minutes = parts.getOrNull(1)?.toLongOrNull() ?: 0L
+            val seconds = parts.getOrNull(2)?.toLongOrNull() ?: 5L
+            
+            ((hours * 3600) + (minutes * 60) + seconds) * 1000L
+        } catch (e: Exception) {
+            5000L
         }
     }
     

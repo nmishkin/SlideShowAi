@@ -21,6 +21,7 @@ class PreferencesRepository(private val context: Context) {
         val QUIET_HOURS_START_KEY = stringPreferencesKey("quiet_hours_start")
         val QUIET_HOURS_END_KEY = stringPreferencesKey("quiet_hours_end")
         val SMART_SHUFFLE_DAYS_KEY = intPreferencesKey("smart_shuffle_days")
+        val PHOTO_DURATION_KEY = stringPreferencesKey("photo_duration")
     }
 
     val serverHost: Flow<String> = context.dataStore.data.map { it[SERVER_HOST_KEY] ?: "" }
@@ -29,8 +30,9 @@ class PreferencesRepository(private val context: Context) {
     val quietHoursStart: Flow<String> = context.dataStore.data.map { it[QUIET_HOURS_START_KEY] ?: "22:00" }
     val quietHoursEnd: Flow<String> = context.dataStore.data.map { it[QUIET_HOURS_END_KEY] ?: "07:00" }
     val smartShuffleDays: Flow<Int> = context.dataStore.data.map { it[SMART_SHUFFLE_DAYS_KEY] ?: 30 }
+    val photoDuration: Flow<String> = context.dataStore.data.map { it[PHOTO_DURATION_KEY] ?: "00:00:05" }
 
-    suspend fun saveServerConfig(host: String, path: String, username: String, quietStart: String, quietEnd: String, shuffleDays: Int) {
+    suspend fun saveServerConfig(host: String, path: String, username: String, quietStart: String, quietEnd: String, shuffleDays: Int, duration: String) {
         context.dataStore.edit { preferences ->
             preferences[SERVER_HOST_KEY] = host
             preferences[SERVER_PATH_KEY] = path
@@ -38,6 +40,7 @@ class PreferencesRepository(private val context: Context) {
             preferences[QUIET_HOURS_START_KEY] = quietStart
             preferences[QUIET_HOURS_END_KEY] = quietEnd
             preferences[SMART_SHUFFLE_DAYS_KEY] = shuffleDays
+            preferences[PHOTO_DURATION_KEY] = duration
         }
     }
 }
