@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,6 +19,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val preferencesRepository = PreferencesRepository(application)
     private val photoSyncRepository = PhotoSyncRepository(application)
     private val locationRepository = LocationRepository(application)
+    private val photoHistoryRepository = com.example.slideshowai.data.PhotoHistoryRepository(application)
 
     var statusMessage by mutableStateOf("Ready")
         private set
@@ -36,7 +38,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var quietHoursEnd by mutableStateOf("07:00")
         private set
         
+    var smartShuffleDays by mutableIntStateOf(30)
+        private set
+        
     var localPhotos by mutableStateOf<List<File>>(emptyList())
+        private set
+        
+    var slideshowPhotos by mutableStateOf<List<File>>(emptyList())
         private set
 
     var isInitialized by mutableStateOf(false)
@@ -45,31 +53,58 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Load saved config
         viewModelScope.launch {
-            kotlinx.coroutines.flow.combine(
+            val serverConfigFlow = kotlinx.coroutines.flow.combine(
                 preferencesRepository.serverHost,
                 preferencesRepository.serverPath,
-                preferencesRepository.serverUsername,
+                preferencesRepository.serverUsername
+            ) { host, path, user ->
+                Triple(host, path, user)
+            }
+
+            kotlinx.coroutines.flow.combine(
+                serverConfigFlow,
                 preferencesRepository.quietHoursStart,
-                preferencesRepository.quietHoursEnd
-            ) { host, path, user, qStart, qEnd ->
-                Config(host, path, user, qStart, qEnd)
+                preferencesRepository.quietHoursEnd,
+                preferencesRepository.smartShuffleDays
+            ) { (host, path, user), qStart, qEnd, days ->
+                Config(host, path, user, qStart, qEnd, days)
             }.collect { config ->
                 serverHost = config.host
                 serverPath = config.path
                 serverUsername = config.username
                 quietHoursStart = config.quietStart
                 quietHoursEnd = config.quietEnd
+                smartShuffleDays = config.shuffleDays
                 
                 // Load local photos immediately
-                localPhotos = photoSyncRepository.getLocalPhotos()
+                refreshPhotos()
                 isInitialized = true
             }
         }
     }
     
-    data class Config(val host: String, val path: String, val username: String, val quietStart: String, val quietEnd: String)
+    private fun refreshPhotos() {
+        val allPhotos = photoSyncRepository.getLocalPhotos()
+        localPhotos = allPhotos
         
-    fun updateServerConfig(host: String, path: String, user: String, pass: String, qStart: String, qEnd: String) {
+        // Smart Shuffle Logic
+        val threshold = System.currentTimeMillis() - (smartShuffleDays.toLong() * 24 * 60 * 60 * 1000)
+        val candidates = allPhotos.filter { photo ->
+            photoHistoryRepository.getLastShownSync(photo) < threshold
+        }
+        
+        slideshowPhotos = if (candidates.isNotEmpty()) {
+            candidates
+        } else {
+            // If all photos shown recently, reset/use all (or sort by oldest shown)
+            // For now, just use all photos if we ran out of "fresh" ones
+            allPhotos
+        }
+    }
+    
+    data class Config(val host: String, val path: String, val username: String, val quietStart: String, val quietEnd: String, val shuffleDays: Int)
+        
+    fun updateServerConfig(host: String, path: String, user: String, pass: String, qStart: String, qEnd: String, shuffleDays: String) {
         serverHost = host
         serverPath = path
         serverUsername = user
@@ -77,8 +112,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         quietHoursStart = qStart
         quietHoursEnd = qEnd
         
+        val days = shuffleDays.toIntOrNull() ?: 30
+        smartShuffleDays = days
+        
         viewModelScope.launch {
-            preferencesRepository.saveServerConfig(host, path, user, qStart, qEnd)
+            preferencesRepository.saveServerConfig(host, path, user, qStart, qEnd, days)
         }
     }
     
@@ -86,19 +124,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             statusMessage = "Starting sync..."
             try {
-                localPhotos = photoSyncRepository.syncPhotos(serverHost, serverPath, serverUsername, serverPassword) { progress ->
+                val syncedPhotos = photoSyncRepository.syncPhotos(serverHost, serverPath, serverUsername, serverPassword) { progress ->
                     Log.d("MainViewModel", "Sync progress: $progress")
                     statusMessage = progress
                 }
-                statusMessage = "Sync Complete. ${localPhotos.size} photos."
+                statusMessage = "Sync Complete. ${syncedPhotos.size} photos."
+                refreshPhotos()
             } catch (e: Exception) {
                 statusMessage = "Error: ${e.message}"
             }
         }
     }
 
-
     suspend fun getLocation(file: File): String? {
         return locationRepository.getLocation(file)
+    }
+    
+    fun markPhotoAsShown(file: File) {
+        viewModelScope.launch {
+            photoHistoryRepository.updateLastShown(file)
+        }
     }
 }

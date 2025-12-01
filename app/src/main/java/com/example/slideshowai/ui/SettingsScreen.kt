@@ -34,8 +34,9 @@ fun SettingsScreen(
     serverPassword: String,
     quietHoursStart: String,
     quietHoursEnd: String,
+    smartShuffleDays: String,
     statusMessage: String,
-    onConfigChange: (String, String, String, String, String, String) -> Unit,
+    onConfigChange: (String, String, String, String, String, String, String) -> Unit,
     onSyncClick: () -> Unit,
     onStartSlideshow: () -> Unit,
     photoCount: Int
@@ -57,7 +58,7 @@ fun SettingsScreen(
             
             OutlinedTextField(
                 value = serverHost,
-                onValueChange = { onConfigChange(it, serverPath, serverUsername, serverPassword, quietHoursStart, quietHoursEnd) },
+                onValueChange = { onConfigChange(it, serverPath, serverUsername, serverPassword, quietHoursStart, quietHoursEnd, smartShuffleDays) },
                 label = { Text("Host") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -65,7 +66,7 @@ fun SettingsScreen(
 
             OutlinedTextField(
                 value = serverPath,
-                onValueChange = { onConfigChange(serverHost, it, serverUsername, serverPassword, quietHoursStart, quietHoursEnd) },
+                onValueChange = { onConfigChange(serverHost, it, serverUsername, serverPassword, quietHoursStart, quietHoursEnd, smartShuffleDays) },
                 label = { Text("Path (e.g. /photos)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -73,7 +74,7 @@ fun SettingsScreen(
 
             OutlinedTextField(
                 value = serverUsername,
-                onValueChange = { onConfigChange(serverHost, serverPath, it, serverPassword, quietHoursStart, quietHoursEnd) },
+                onValueChange = { onConfigChange(serverHost, serverPath, it, serverPassword, quietHoursStart, quietHoursEnd, smartShuffleDays) },
                 label = { Text("Username") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -81,7 +82,7 @@ fun SettingsScreen(
 
             OutlinedTextField(
                 value = serverPassword,
-                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, it, quietHoursStart, quietHoursEnd) },
+                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, it, quietHoursStart, quietHoursEnd, smartShuffleDays) },
                 label = { Text("Password") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -92,7 +93,7 @@ fun SettingsScreen(
             
             OutlinedTextField(
                 value = quietHoursStart,
-                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, serverPassword, it, quietHoursEnd) },
+                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, serverPassword, it, quietHoursEnd, smartShuffleDays) },
                 label = { Text("Start Time (HH:MM)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -100,10 +101,21 @@ fun SettingsScreen(
 
             OutlinedTextField(
                 value = quietHoursEnd,
-                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, serverPassword, quietHoursStart, it) },
+                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, serverPassword, quietHoursStart, it, smartShuffleDays) },
                 label = { Text("End Time (HH:MM)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
+            )
+            
+            Text("Smart Shuffle", style = MaterialTheme.typography.titleMedium)
+            
+            OutlinedTextField(
+                value = smartShuffleDays,
+                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, serverPassword, quietHoursStart, quietHoursEnd, it) },
+                label = { Text("Don't repeat within (Days)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
             )
             
             Button(

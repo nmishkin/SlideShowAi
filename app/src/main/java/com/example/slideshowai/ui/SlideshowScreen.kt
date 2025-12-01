@@ -26,7 +26,8 @@ fun SlideshowScreen(
     quietHoursStart: String,
     quietHoursEnd: String,
     onBack: () -> Unit,
-    onGetLocation: suspend (File) -> String?
+    onGetLocation: suspend (File) -> String?,
+    onPhotoShown: (File) -> Unit
 ) {
     // Shuffle the list so photos are shown in random order
     val shuffledItems = remember(mediaItems) { mediaItems.shuffled() }
@@ -191,6 +192,7 @@ fun SlideshowScreen(
             
             LaunchedEffect(currentFile) {
                 location = onGetLocation(currentFile)
+                onPhotoShown(currentFile)
             }
 
             if (year != null || location != null) {

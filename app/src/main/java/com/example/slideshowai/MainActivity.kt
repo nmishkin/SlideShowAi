@@ -47,9 +47,10 @@ class MainActivity : ComponentActivity() {
                                 serverPassword = viewModel.serverPassword,
                                 quietHoursStart = viewModel.quietHoursStart,
                                 quietHoursEnd = viewModel.quietHoursEnd,
+                                smartShuffleDays = viewModel.smartShuffleDays.toString(),
                                 statusMessage = viewModel.statusMessage,
-                                onConfigChange = { host, path, user, pass, qStart, qEnd -> 
-                                    viewModel.updateServerConfig(host, path, user, pass, qStart, qEnd) 
+                                onConfigChange = { host, path, user, pass, qStart, qEnd, days ->
+                                    viewModel.updateServerConfig(host, path, user, pass, qStart, qEnd, days)
                                 },
                                 onSyncClick = { viewModel.startSync() },
                                 onStartSlideshow = { navController.navigate("slideshow") },
@@ -58,11 +59,12 @@ class MainActivity : ComponentActivity() {
                         }
                         composable("slideshow") {
                             SlideshowScreen(
-                                mediaItems = viewModel.localPhotos,
+                                mediaItems = viewModel.slideshowPhotos,
                                 quietHoursStart = viewModel.quietHoursStart,
                                 quietHoursEnd = viewModel.quietHoursEnd,
                                 onBack = { navController.popBackStack() },
-                                onGetLocation = { file -> viewModel.getLocation(file) }
+                                onGetLocation = { file -> viewModel.getLocation(file) },
+                                onPhotoShown = { file -> viewModel.markPhotoAsShown(file) }
                             )
                         }
                     }
