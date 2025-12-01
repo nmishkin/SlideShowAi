@@ -1,57 +1,33 @@
 package com.example.slideshowai.data
 
 import android.content.Context
+import com.example.slideshowai.data.database.AppDatabase
+import com.example.slideshowai.data.database.PhotoHistory
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import java.io.File
 
 class PhotoHistoryRepository(context: Context) {
-    private val historyFile = File(context.filesDir, "photo_history.json")
-    private val history = mutableMapOf<String, Long>()
-
-    init {
-        loadHistory()
-    }
-
-    private fun loadHistory() {
-        if (historyFile.exists()) {
-            try {
-                val jsonString = historyFile.readText()
-                val jsonObject = JSONObject(jsonString)
-                jsonObject.keys().forEach { key ->
-                    history[key] = jsonObject.getLong(key)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    private fun saveHistory() {
-        try {
-            val jsonObject = JSONObject(history as Map<*, *>)
-            historyFile.writeText(jsonObject.toString())
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
+    private val dao = AppDatabase.getDatabase(context).photoHistoryDao()
 
     suspend fun getLastShown(file: File): Long {
         return withContext(Dispatchers.IO) {
-            history[file.name] ?: 0L
+            dao.getLastShown(file.name) ?: 0L
         }
     }
     
-    // Synchronous version for filtering
-    fun getLastShownSync(file: File): Long {
-        return history[file.name] ?: 0L
+    // Synchronous version for filtering - fetches all history to optimize
+    // In a real large app, we might want to do this filtering in the DB query itself
+    fun getAllHistorySync(): Map<String, Long> {
+        return runBlocking {
+            dao.getAllHistory().associate { it.fileName to it.lastShownTimestamp }
+        }
     }
 
     suspend fun updateLastShown(file: File) {
         withContext(Dispatchers.IO) {
-            history[file.name] = System.currentTimeMillis()
-            saveHistory()
+            dao.insertHistory(PhotoHistory(file.name, System.currentTimeMillis()))
         }
     }
 }

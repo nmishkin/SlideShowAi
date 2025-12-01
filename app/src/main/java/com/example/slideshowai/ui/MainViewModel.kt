@@ -93,9 +93,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         localPhotos = allPhotos
         
         // Smart Shuffle Logic
+        val historyMap = photoHistoryRepository.getAllHistorySync()
         val threshold = System.currentTimeMillis() - (smartShuffleDays.toLong() * 24 * 60 * 60 * 1000)
+        
         val candidates = allPhotos.filter { photo ->
-            photoHistoryRepository.getLastShownSync(photo) < threshold
+            val lastShown = historyMap[photo.name] ?: 0L
+            lastShown < threshold
         }
         
         slideshowPhotos = if (candidates.isNotEmpty()) {
