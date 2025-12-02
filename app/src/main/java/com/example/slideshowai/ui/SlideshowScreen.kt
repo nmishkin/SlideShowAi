@@ -122,7 +122,14 @@ fun SlideshowScreen(
         }
     }
 
+    var isFirstRun by remember(mediaItems) { mutableStateOf(true) }
+
     LaunchedEffect(shuffledItems, isQuietHour) {
+        if (!isFirstRun && !isQuietHour && shuffledItems.isNotEmpty()) {
+            currentIndex = (currentIndex + 1) % shuffledItems.size
+        }
+        isFirstRun = false
+
         while (true) {
             delay(photoDurationMillis)
             if (!isQuietHour && shuffledItems.isNotEmpty()) {
