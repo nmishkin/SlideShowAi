@@ -168,16 +168,39 @@ def sync_photos_picker(host, user, password, path):
         media_file = item.get('mediaFile', {})
         filename = media_file.get('filename')
         base_url = media_file.get('baseUrl')
+        metadata = media_file.get('mediaFileMetadata', {})
         
         if not filename or not base_url:
             continue
+            
+        # Check dimensions
+        width = int(metadata.get('width', 0))
+        height = int(metadata.get('height', 0))
+        
+        if width == 0 or height == 0:
+            print(f"Skipping {filename} (unknown dimensions)")
+            continue
+            
+        # 1. Skip Portrait (Taller than wide)
+        if height > width:
+            print(f"Skipping {filename} (Portrait: {width}x{height})")
+            continue
+            
+        # 2. Downres if width > 1280
+        if width > 1280:
+            print(f"Resizing {filename} ({width}x{height} -> 1280 width)...")
+            download_url = f"{base_url}=w1280"
+            # Google Photos resizing usually returns JPEG. Update extension.
+            base_name = os.path.splitext(filename)[0]
+            filename = f"{base_name}.jpg"
+        else:
+            download_url = f"{base_url}=d" # Download original
             
         if filename in existing_files:
             print(f"Skipping {filename} (exists)")
             continue
 
         print(f"Downloading {filename}...")
-        download_url = f"{base_url}=d" # Request download
         
         try:
             # Stream download
