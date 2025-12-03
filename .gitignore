@@ -1,2 +1,5 @@
 /app/build/
 /.gradle/
+/scripts/client_secret.json
+/scripts/token.json
+/scripts/__pycache__/
