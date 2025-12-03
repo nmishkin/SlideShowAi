@@ -163,6 +163,9 @@ def sync_photos_picker(host, user, password, path):
     except:
         existing_files = []
 
+    # Track files that should exist on the server
+    processed_files = set()
+
     # 3. Download and Upload
     for item in media_items:
         media_file = item.get('mediaFile', {})
@@ -196,6 +199,9 @@ def sync_photos_picker(host, user, password, path):
         else:
             download_url = f"{base_url}=d" # Download original
             
+        # Add to processed list (this file should be kept)
+        processed_files.add(filename)
+
         if filename in existing_files:
             print(f"Skipping {filename} (exists)")
             continue
@@ -210,6 +216,17 @@ def sync_photos_picker(host, user, password, path):
                 ftp.storbinary(f"STOR {filename}", r.raw)
         except Exception as e:
             print(f"Failed to transfer {filename}: {e}")
+
+    # 4. Delete files not in the selection
+    print("\nChecking for files to delete...")
+    for existing_file in existing_files:
+        # Skip directories or special files if needed (nlst usually returns names)
+        if existing_file not in processed_files:
+            print(f"Deleting {existing_file} (not in current selection)...")
+            try:
+                ftp.delete(existing_file)
+            except Exception as e:
+                print(f"Failed to delete {existing_file}: {e}")
 
     ftp.quit()
     print("Sync complete.")
