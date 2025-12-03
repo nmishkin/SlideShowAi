@@ -53,6 +53,10 @@ def connect_ftp(host, user, password, path):
         return None
 
 def sync_photos_picker(host, user, password, path):
+    ftp = connect_ftp(host, user, password, path)
+    if not ftp:
+        return
+
     creds = get_credentials()
     if not creds:
         return
@@ -153,10 +157,6 @@ def sync_photos_picker(host, user, password, path):
 
     print(f"Found {len(media_items)} selected photos.")
     
-    ftp = connect_ftp(host, user, password, path)
-    if not ftp:
-        return
-
     # Get existing files
     try:
         existing_files = ftp.nlst()
