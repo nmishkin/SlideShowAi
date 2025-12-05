@@ -30,4 +30,8 @@ class PhotoHistoryRepository(context: Context) {
             dao.insertHistory(PhotoHistory(file.name, System.currentTimeMillis()))
         }
     }
+
+    fun deleteHistory(fileName: String) {
+        dao.deleteHistory(fileName)
+    }
 }

@@ -12,4 +12,7 @@ interface PhotoLocationDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLocation(photoLocation: PhotoLocation)
+
+    @Query("DELETE FROM photo_locations WHERE fileName = :fileName")
+    fun deleteLocation(fileName: String)
 }

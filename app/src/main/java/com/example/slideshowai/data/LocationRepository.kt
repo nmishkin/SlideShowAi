@@ -33,6 +33,10 @@ class LocationRepository(private val context: Context) {
         }
     }
 
+    fun deleteLocation(fileName: String) {
+        dao.deleteLocation(fileName)
+    }
+
     private fun fetchLocationFromExif(file: File): String? {
         try {
             Log.d("LocationRepository", "Fetching location for file: ${file.name}")

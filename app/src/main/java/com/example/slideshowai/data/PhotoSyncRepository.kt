@@ -68,7 +68,13 @@ class PhotoSyncRepository(private val context: Context) {
             localFiles.forEach { localFile ->
                 if (!remoteFileNames.contains(localFile.name)) {
                     onProgress("Deleting ${localFile.name}...")
-                    localFile.delete()
+                    if (localFile.delete()) {
+                        // Also delete from DB
+                        val locationRepo = LocationRepository(context)
+                        val historyRepo = PhotoHistoryRepository(context)
+                        locationRepo.deleteLocation(localFile.name)
+                        historyRepo.deleteHistory(localFile.name)
+                    }
                 }
             }
 

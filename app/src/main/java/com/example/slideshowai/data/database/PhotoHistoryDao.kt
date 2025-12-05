@@ -17,4 +17,7 @@ interface PhotoHistoryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertHistory(photoHistory: PhotoHistory)
+
+    @Query("DELETE FROM photo_history WHERE fileName = :fileName")
+    fun deleteHistory(fileName: String)
 }
