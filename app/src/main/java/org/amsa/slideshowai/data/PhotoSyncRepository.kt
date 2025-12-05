@@ -23,13 +23,8 @@ class PhotoSyncRepository(private val context: Context) {
         return withContext(Dispatchers.IO) {
             if (host.isBlank()) return@withContext getLocalPhotos()
 
-            try {
-                // Assume FTP for now as per requirements
-                syncFtp(host, path, user, pass, onProgress)
-            } catch (e: Exception) {
-                onProgress("Sync failed: ${e.message}")
-                e.printStackTrace()
-            }
+            // Assume FTP for now as per requirements
+            syncFtp(host, path, user, pass, onProgress)
             
             getLocalPhotos()
         }

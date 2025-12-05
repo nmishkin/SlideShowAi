@@ -35,8 +35,10 @@ fun SettingsScreen(
     smartShuffleDays: String,
     photoDuration: String,
     statusMessage: String,
+    syncErrorMessage: String?,
     onConfigChange: (String, String, String, String, String, String, String, String) -> Unit,
     onSyncClick: () -> Unit,
+    onClearSyncError: () -> Unit,
     onStartSlideshow: () -> Unit,
     photoCount: Int
 ) {
@@ -152,6 +154,20 @@ fun SettingsScreen(
                 enabled = photoCount > 0
             ) {
                 Text("Start Slideshow")
+            }
+                    if (syncErrorMessage != null) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = onClearSyncError,
+                    title = { Text("Sync Error") },
+                    text = { Text(syncErrorMessage) },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = onClearSyncError
+                        ) {
+                            Text("OK")
+                        }
+                    }
+                )
             }
         }
     }

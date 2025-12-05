@@ -49,10 +49,12 @@ class MainActivity : ComponentActivity() {
                                 smartShuffleDays = viewModel.smartShuffleDays.toString(),
                                 photoDuration = viewModel.photoDuration,
                                 statusMessage = viewModel.statusMessage,
+                                syncErrorMessage = viewModel.syncErrorMessage,
                                 onConfigChange = { host, path, user, pass, qStart, qEnd, days, duration ->
                                     viewModel.updateServerConfig(host, path, user, pass, qStart, qEnd, days, duration)
                                 },
                                 onSyncClick = { viewModel.startSync() },
+                                onClearSyncError = { viewModel.clearSyncError() },
                                 onStartSlideshow = { navController.navigate("slideshow") },
                                 photoCount = viewModel.localPhotos.size
                             )

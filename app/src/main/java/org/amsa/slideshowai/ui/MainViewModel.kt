@@ -143,6 +143,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
+    var syncErrorMessage by mutableStateOf<String?>(null)
+        private set
+
+    fun clearSyncError() {
+        syncErrorMessage = null
+    }
+
     fun startSync() {
         viewModelScope.launch {
             statusMessage = "Starting sync..."
@@ -154,7 +161,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 statusMessage = "Sync Complete. ${syncedPhotos.size} photos."
                 refreshPhotos()
             } catch (e: Exception) {
-                statusMessage = "Error: ${e.message}"
+                statusMessage = "Error occurred during sync."
+                syncErrorMessage = e.message ?: "Unknown error"
             }
         }
     }
