@@ -3,7 +3,9 @@ import ftplib
 import argparse
 import getpass
 import io
-from PIL import Image
+import socket
+import json
+from PIL import Image, ImageOps
 import pillow_heif
 import piexif
 
@@ -92,6 +94,25 @@ def process_image(filepath):
         print(f"Error processing {filename}: {e}")
         return None, None
 
+def trigger_app_sync(app_host, port=4000):
+    print(f"\nTriggering sync on Android App at {app_host}:{port}...")
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.settimeout(10) # 10 second timeout
+            s.connect((app_host, port))
+            
+            command = json.dumps({"cmd": "sync"})
+            s.sendall(command.encode('utf-8') + b'\n')
+            
+            # Read response
+            response = s.recv(4096)
+            if response:
+                print(f"App response: {response.decode('utf-8').strip()}")
+            else:
+                print("No response from app.")
+    except Exception as e:
+        print(f"Failed to trigger app sync: {e}")
+
 def sync_local_folders(host, user, password, remote_path, local_dirs):
     ftp = connect_ftp(host, user, password, remote_path)
     if not ftp:
@@ -160,9 +181,13 @@ if __name__ == '__main__':
     parser.add_argument('user', help='FTP Username')
     parser.add_argument('remote_path', help='Remote directory path to store photos')
     parser.add_argument('local_dirs', nargs='+', help='Local directories containing photos')
+    parser.add_argument('--sync-app', help='Hostname or IP address of the Android App to trigger sync', default=None)
     
     args = parser.parse_args()
     
     password = getpass.getpass(prompt=f"Enter password for {args.user}@{args.host}: ")
     
     sync_local_folders(args.host, args.user, password, args.remote_path, args.local_dirs)
+
+    if args.sync_app:
+        trigger_app_sync(args.sync_app)
