@@ -1,4 +1,4 @@
-package com.example.slideshowai.data.database
+package org.amsa.slideshowai.data.database
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

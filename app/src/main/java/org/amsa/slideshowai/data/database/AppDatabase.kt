@@ -1,4 +1,4 @@
-package com.example.slideshowai.data.database
+package org.amsa.slideshowai.data.database
 
 import android.content.Context
 import androidx.room.Database

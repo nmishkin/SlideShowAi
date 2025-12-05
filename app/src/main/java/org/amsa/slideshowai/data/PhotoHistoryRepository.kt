@@ -1,8 +1,8 @@
-package com.example.slideshowai.data
+package org.amsa.slideshowai.data
 
 import android.content.Context
-import com.example.slideshowai.data.database.AppDatabase
-import com.example.slideshowai.data.database.PhotoHistory
+import org.amsa.slideshowai.data.database.AppDatabase
+import org.amsa.slideshowai.data.database.PhotoHistory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext

@@ -1,11 +1,11 @@
-package com.example.slideshowai.data
+package org.amsa.slideshowai.data
 
 import android.content.Context
 import android.location.Geocoder
 import android.util.Log
 import androidx.exifinterface.media.ExifInterface
-import com.example.slideshowai.data.database.AppDatabase
-import com.example.slideshowai.data.database.PhotoLocation
+import org.amsa.slideshowai.data.database.AppDatabase
+import org.amsa.slideshowai.data.database.PhotoLocation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File

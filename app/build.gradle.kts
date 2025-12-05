@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.slideshowai"
+    namespace = "org.amsa.slideshowai"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.slideshowai"
+        applicationId = "org.amsa.slideshowai"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

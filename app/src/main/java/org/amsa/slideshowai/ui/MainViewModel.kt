@@ -1,4 +1,4 @@
-package com.example.slideshowai.ui
+package org.amsa.slideshowai.ui
 
 import android.app.Application
 import android.util.Log
@@ -8,9 +8,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.slideshowai.data.PhotoSyncRepository
-import com.example.slideshowai.data.PreferencesRepository
-import com.example.slideshowai.data.LocationRepository
+import org.amsa.slideshowai.data.PhotoSyncRepository
+import org.amsa.slideshowai.data.PreferencesRepository
+import org.amsa.slideshowai.data.LocationRepository
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -19,7 +19,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val preferencesRepository = PreferencesRepository(application)
     private val photoSyncRepository = PhotoSyncRepository(application)
     private val locationRepository = LocationRepository(application)
-    private val photoHistoryRepository = com.example.slideshowai.data.PhotoHistoryRepository(application)
+    private val photoHistoryRepository = org.amsa.slideshowai.data.PhotoHistoryRepository(application)
 
     var statusMessage by mutableStateOf("Ready")
         private set

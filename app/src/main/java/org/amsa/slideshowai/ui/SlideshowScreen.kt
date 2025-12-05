@@ -1,4 +1,4 @@
-package com.example.slideshowai.ui
+package org.amsa.slideshowai.ui
 
 import android.util.Log
 import androidx.compose.foundation.Image

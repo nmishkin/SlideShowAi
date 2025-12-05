@@ -1,4 +1,4 @@
-package com.example.slideshowai.ui.theme
+package org.amsa.slideshowai.ui.theme
 
 import android.app.Activity
 import android.os.Build
