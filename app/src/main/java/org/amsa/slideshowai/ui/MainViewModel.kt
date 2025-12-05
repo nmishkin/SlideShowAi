@@ -54,7 +54,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var isInitialized by mutableStateOf(false)
         private set
 
+    private val tcpServer = org.amsa.slideshowai.data.TcpCommandServer()
+
     init {
+        // Start TCP Server
+        viewModelScope.launch {
+            tcpServer.start(4000) { cmd, args ->
+                handleTcpCommand(cmd, args)
+            }
+        }
+
         // Load saved config
         viewModelScope.launch {
             val serverConfigFlow = kotlinx.coroutines.flow.combine(
@@ -87,6 +96,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 isInitialized = true
             }
         }
+    }
+    
+    private suspend fun handleTcpCommand(cmd: String, args: List<String>): String {
+        return if (cmd == "sync") {
+            if (serverPassword.isBlank()) {
+                org.json.JSONObject().apply {
+                    put("status", "error")
+                    put("message", "Password not set in app")
+                }.toString()
+            } else {
+                try {
+                    // Trigger sync
+                    // We need to run sync and wait for result
+                    val result = photoSyncRepository.syncPhotos(serverHost, serverPath, serverUsername, serverPassword) { progress ->
+                        Log.d("MainViewModel", "TCP Sync progress: $progress")
+                        // Optional: broadcast progress? For now just log.
+                        viewModelScope.launch {
+                            statusMessage = progress
+                        }
+                    }
+                    
+                    viewModelScope.launch {
+                        statusMessage = "Sync Complete. ${result.size} photos."
+                        refreshPhotos()
+                    }
+
+                    org.json.JSONObject().apply {
+                        put("status", "success")
+                        put("message", "Sync complete")
+                        put("synced_count", result.size)
+                    }.toString()
+                } catch (e: Exception) {
+                     viewModelScope.launch {
+                        statusMessage = "TCP Sync Error: ${e.message}"
+                        syncErrorMessage = e.message
+                    }
+                    org.json.JSONObject().apply {
+                        put("status", "error")
+                        put("message", e.message ?: "Unknown sync error")
+                    }.toString()
+                }
+            }
+        } else {
+            org.json.JSONObject().apply {
+                put("status", "error")
+                put("message", "Unknown command: $cmd")
+            }.toString()
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        tcpServer.stop()
     }
     
     private fun refreshPhotos() {
