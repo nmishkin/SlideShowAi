@@ -8,7 +8,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import org.amsa.slideshowai.data.PhotoSyncRepository
 import org.amsa.slideshowai.data.PreferencesRepository
 import org.amsa.slideshowai.data.LocationRepository
 import kotlinx.coroutines.launch
@@ -21,21 +20,14 @@ import java.io.File
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private val preferencesRepository = PreferencesRepository(application)
-    private val photoSyncRepository = PhotoSyncRepository(application)
     private val locationRepository = LocationRepository(application)
     private val photoHistoryRepository = PhotoHistoryRepository(application)
+
 
     var statusMessage by mutableStateOf("Ready")
         private set
 
-    var serverHost by mutableStateOf("")
-        private set
-    var serverPath by mutableStateOf("")
-        private set
-    var serverUsername by mutableStateOf("")
-        private set
-    var serverPassword by mutableStateOf("")
-        private set
+
         
     var quietHoursStart by mutableStateOf("22:00")
         private set
@@ -62,33 +54,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Start TCP Server
         viewModelScope.launch {
-            tcpServer.start(4000) { cmd, args ->
-                handleTcpCommand(cmd, args)
+            tcpServer.start(4000) { cmd, json, socket ->
+                handleTcpCommand(cmd, json, socket)
             }
         }
 
         // Load saved config
         viewModelScope.launch {
-            val serverConfigFlow = kotlinx.coroutines.flow.combine(
-                preferencesRepository.serverHost,
-                preferencesRepository.serverPath,
-                preferencesRepository.serverUsername
-            ) { host, path, user ->
-                Triple(host, path, user)
-            }
-
             kotlinx.coroutines.flow.combine(
-                serverConfigFlow,
                 preferencesRepository.quietHoursStart,
                 preferencesRepository.quietHoursEnd,
                 preferencesRepository.smartShuffleDays,
                 preferencesRepository.photoDuration
-            ) { (host, path, user), qStart, qEnd, days, duration ->
-                Config(host, path, user, qStart, qEnd, days, duration)
+            ) { qStart, qEnd, days, duration ->
+                Config(qStart, qEnd, days, duration)
             }.first().let { config ->
-                serverHost = config.host
-                serverPath = config.path
-                serverUsername = config.username
                 quietHoursStart = config.quietStart
                 quietHoursEnd = config.quietEnd
                 smartShuffleDays = config.shuffleDays
@@ -101,51 +81,81 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
-    private suspend fun handleTcpCommand(cmd: String, args: List<String>): String {
-        return if (cmd == "sync") {
-            if (serverPassword.isBlank()) {
-                JSONObject().apply {
-                    put("status", "error")
-                    put("message", "Password not set in app")
-                }.toString()
-            } else {
-                try {
-                    // Trigger sync
-                    // We need to run sync and wait for result
-                    val result = photoSyncRepository.syncPhotos(serverHost, serverPath, serverUsername, serverPassword) { progress ->
-                        Log.d("MainViewModel", "TCP Sync progress: $progress")
-                        // Optional: broadcast progress? For now just log.
-                        viewModelScope.launch {
-                            statusMessage = progress
-                        }
+    private suspend fun handleTcpCommand(cmd: String, json: JSONObject, socket: java.net.Socket) {
+        val writer = java.io.PrintWriter(socket.getOutputStream(), true)
+        
+        try {
+            when (cmd) {
+                "list_files" -> {
+                    val files = localPhotos.map { it.name }
+                    val response = JSONObject().apply {
+                        put("status", "ok")
+                        put("files", org.json.JSONArray(files))
                     }
+                    writer.println(response.toString())
+                }
+                "delete_file" -> {
+                    val filename = json.getString("name")
+                    val file = File(getApplication<Application>().filesDir, "slideshow_photos/$filename")
                     
-                    viewModelScope.launch {
-                        statusMessage = "Sync Complete. ${result.size} photos."
-                        refreshPhotos()
+                    if (file.exists()) {
+                        if (file.delete()) {
+                            // Clean up DB
+                            try {
+                                locationRepository.deleteLocation(filename)
+                                photoHistoryRepository.deleteHistory(filename)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                            refreshPhotos()
+                            writer.println(JSONObject().put("status", "ok").put("message", "Deleted $filename").toString())
+                        } else {
+                            writer.println(JSONObject().put("status", "error").put("message", "Failed to delete $filename").toString())
+                        }
+                    } else {
+                         writer.println(JSONObject().put("status", "ok").put("message", "File not found (already deleted)").toString())
                     }
-
-                    JSONObject().apply {
-                        put("status", "success")
-                        put("message", "Sync complete")
-                        put("synced_count", result.size)
-                    }.toString()
-                } catch (e: Exception) {
-                     viewModelScope.launch {
-                        statusMessage = "TCP Sync Error: ${e.message}"
-                        syncErrorMessage = e.message
+                }
+                "receive_file" -> {
+                    val filename = json.getString("name")
+                    val size = json.getLong("size")
+                    
+                    writer.println(JSONObject().put("status", "ready").toString())
+                    
+                    // Read binary data
+                    val dir = File(getApplication<Application>().filesDir, "slideshow_photos")
+                    if (!dir.exists()) dir.mkdirs()
+                    val file = File(dir, filename)
+                    
+                    val inputStream = socket.getInputStream()
+                    val outputStream = java.io.FileOutputStream(file)
+                    val buffer = ByteArray(4096)
+                    var bytesRead: Long = 0
+                    
+                    while (bytesRead < size) {
+                        val remaining = size - bytesRead
+                        val readSize = if (remaining < buffer.size) remaining.toInt() else buffer.size
+                        val count = inputStream.read(buffer, 0, readSize)
+                        if (count == -1) break
+                        outputStream.write(buffer, 0, count)
+                        bytesRead += count
                     }
-                    JSONObject().apply {
-                        put("status", "error")
-                        put("message", e.message ?: "Unknown sync error")
-                    }.toString()
+                    outputStream.close()
+                    
+                    if (bytesRead == size) {
+                         refreshPhotos()
+                         writer.println(JSONObject().put("status", "ok").put("message", "File received").toString())
+                    } else {
+                         writer.println(JSONObject().put("status", "error").put("message", "Incomplete transfer").toString())
+                    }
+                }
+                else -> {
+                    writer.println(JSONObject().put("status", "error").put("message", "Unknown command: $cmd").toString())
                 }
             }
-        } else {
-            JSONObject().apply {
-                put("status", "error")
-                put("message", "Unknown command: $cmd")
-            }.toString()
+        } catch (e: Exception) {
+            e.printStackTrace()
+             writer.println(JSONObject().put("status", "error").put("message", e.message).toString())
         }
     }
 
@@ -155,7 +165,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     private fun refreshPhotos() {
-        val allPhotos = photoSyncRepository.getLocalPhotos()
+        val dir = File(getApplication<Application>().filesDir, "slideshow_photos")
+        val allPhotos = dir.listFiles()?.filter { isImageFile(it.name) }?.toList() ?: emptyList()
         localPhotos = allPhotos
         
         // Smart Shuffle Logic
@@ -176,13 +187,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
-    data class Config(val host: String, val path: String, val username: String, val quietStart: String, val quietEnd: String, val shuffleDays: Int, val duration: String)
+    data class Config(val quietStart: String, val quietEnd: String, val shuffleDays: Int, val duration: String)
         
-    fun updateServerConfig(host: String, path: String, user: String, pass: String, qStart: String, qEnd: String, shuffleDays: String, duration: String) {
-        serverHost = host
-        serverPath = path
-        serverUsername = user
-        serverPassword = pass
+    fun updateServerConfig(qStart: String, qEnd: String, shuffleDays: String, duration: String) {
         quietHoursStart = qStart
         quietHoursEnd = qEnd
         photoDuration = duration
@@ -191,7 +198,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         smartShuffleDays = days
         
         viewModelScope.launch {
-            preferencesRepository.saveServerConfig(host, path, user, qStart, qEnd, days, duration)
+            preferencesRepository.saveServerConfig(qStart, qEnd, days, duration)
         }
     }
     
@@ -215,22 +222,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         syncErrorMessage = null
     }
 
-    fun startSync() {
-        viewModelScope.launch {
-            statusMessage = "Starting sync..."
-            try {
-                val syncedPhotos = photoSyncRepository.syncPhotos(serverHost, serverPath, serverUsername, serverPassword) { progress ->
-                    Log.d("MainViewModel", "Sync progress: $progress")
-                    statusMessage = progress
-                }
-                statusMessage = "Sync Complete. ${syncedPhotos.size} photos."
-                refreshPhotos()
-            } catch (e: Exception) {
-                statusMessage = "Error occurred during sync."
-                syncErrorMessage = e.message ?: "Unknown error"
-            }
-        }
-    }
+
 
     suspend fun getLocation(file: File): String? {
         return locationRepository.getLocation(file)
@@ -240,5 +232,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             photoHistoryRepository.updateLastShown(file)
         }
+        }
+
+    private fun isImageFile(name: String): Boolean {
+        val extensions = listOf(".jpg", ".jpeg", ".png", ".webp", ".heic")
+        return extensions.any { name.lowercase().endsWith(it) }
     }
 }

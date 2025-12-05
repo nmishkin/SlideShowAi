@@ -26,18 +26,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    serverHost: String,
-    serverPath: String,
-    serverUsername: String,
-    serverPassword: String,
     quietHoursStart: String,
     quietHoursEnd: String,
     smartShuffleDays: String,
     photoDuration: String,
     statusMessage: String,
     syncErrorMessage: String?,
-    onConfigChange: (String, String, String, String, String, String, String, String) -> Unit,
-    onSyncClick: () -> Unit,
+    onConfigChange: (String, String, String, String) -> Unit,
     onClearSyncError: () -> Unit,
     onStartSlideshow: () -> Unit,
     photoCount: Int
@@ -55,46 +50,24 @@ fun SettingsScreen(
                 .verticalScroll(androidx.compose.foundation.rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("FTP Configuration", style = MaterialTheme.typography.titleMedium)
+            Text("Connection Info", style = MaterialTheme.typography.titleMedium)
             
-            OutlinedTextField(
-                value = serverHost,
-                onValueChange = { onConfigChange(it, serverPath, serverUsername, serverPassword, quietHoursStart, quietHoursEnd, smartShuffleDays, photoDuration) },
-                label = { Text("Host") },
+            Card(
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = serverPath,
-                onValueChange = { onConfigChange(serverHost, it, serverUsername, serverPassword, quietHoursStart, quietHoursEnd, smartShuffleDays, photoDuration) },
-                label = { Text("Path (e.g. /photos)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = serverUsername,
-                onValueChange = { onConfigChange(serverHost, serverPath, it, serverPassword, quietHoursStart, quietHoursEnd, smartShuffleDays, photoDuration) },
-                label = { Text("Username") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            OutlinedTextField(
-                value = serverPassword,
-                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, it, quietHoursStart, quietHoursEnd, smartShuffleDays, photoDuration) },
-                label = { Text("Password") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation()
-            )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            ) {
+                 Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Server Running", style = MaterialTheme.typography.titleSmall)
+                    Text("Port: 4000", style = MaterialTheme.typography.bodyMedium)
+                    Text("Ready for Direct Push Sync", style = MaterialTheme.typography.bodyMedium)
+                 }
+            }
 
             Text("Quiet Hours (Screen Off)", style = MaterialTheme.typography.titleMedium)
             
             OutlinedTextField(
                 value = quietHoursStart,
-                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, serverPassword, it, quietHoursEnd, smartShuffleDays, photoDuration) },
+                onValueChange = { onConfigChange(it, quietHoursEnd, smartShuffleDays, photoDuration) },
                 label = { Text("Start Time (HH:MM)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -102,7 +75,7 @@ fun SettingsScreen(
 
             OutlinedTextField(
                 value = quietHoursEnd,
-                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, serverPassword, quietHoursStart, it, smartShuffleDays, photoDuration) },
+                onValueChange = { onConfigChange(quietHoursStart, it, smartShuffleDays, photoDuration) },
                 label = { Text("End Time (HH:MM)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
@@ -112,7 +85,7 @@ fun SettingsScreen(
             
             OutlinedTextField(
                 value = smartShuffleDays,
-                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, serverPassword, quietHoursStart, quietHoursEnd, it, photoDuration) },
+                onValueChange = { onConfigChange(quietHoursStart, quietHoursEnd, it, photoDuration) },
                 label = { Text("Don't repeat within (Days)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
@@ -121,18 +94,13 @@ fun SettingsScreen(
             
             OutlinedTextField(
                 value = photoDuration,
-                onValueChange = { onConfigChange(serverHost, serverPath, serverUsername, serverPassword, quietHoursStart, quietHoursEnd, smartShuffleDays, it) },
+                onValueChange = { onConfigChange(quietHoursStart, quietHoursEnd, smartShuffleDays, it) },
                 label = { Text("Photo Duration (HH:MM:SS)") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
             
-            Button(
-                onClick = onSyncClick,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Sync Now")
-            }
+
             
             Card(
                 modifier = Modifier.fillMaxWidth(),

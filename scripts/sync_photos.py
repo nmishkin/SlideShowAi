@@ -1,7 +1,5 @@
-import os
-import ftplib
 import argparse
-import getpass
+import os
 import io
 import socket
 import json
@@ -9,185 +7,197 @@ from PIL import Image, ImageOps
 import pillow_heif
 import piexif
 
-# Register HEIC opener
+# Register HEIF opener
 pillow_heif.register_heif_opener()
-
-def connect_ftp(host, user, password, path):
-    try:
-        print(f"Connecting to FTP {host} as {user}...")
-        ftp = ftplib.FTP(host)
-        ftp.login(user, password)
-        try:
-            ftp.cwd(path)
-        except ftplib.error_perm:
-            print(f"Directory {path} does not exist. Creating it.")
-            ftp.mkd(path)
-            ftp.cwd(path)
-        return ftp
-    except Exception as e:
-        print(f"FTP Connection Error: {e}")
-        return None
 
 def process_image(filepath):
     """
-    Reads an image, checks dimensions, resizes if needed, and returns:
-    (filename_to_upload, image_bytes)
-    Returns (None, None) if the image should be skipped (e.g. portrait).
-    """
-    filename = os.path.basename(filepath)
-    base_name, ext = os.path.splitext(filename)
-    ext = ext.lower()
+    Reads an image, checks dimensions, resizes if needed (max width 1280),
+    preserves EXIF (sanitized), and returns (filename, bytes).
     
-    if ext not in ['.jpg', '.jpeg', '.png', '.heic', '.heif']:
-        return None, None
-
+    Skips portrait photos (height > width).
+    """
     try:
+        filename = os.path.basename(filepath)
+        
+        # Load EXIF first to check orientation if needed, but Pillow handles it mostly.
+        # However, for the 'Skip Portrait' logic, we need dimensions.
+        
         img = Image.open(filepath)
         width, height = img.size
         
-        # 1. Skip Portrait (Taller than wide)
+        # Check orientation via EXIF to be sure about dimensions?
+        # Pillow's ImageOps.exif_transpose handles rotation.
+        img = ImageOps.exif_transpose(img)
+        width, height = img.size
+        
+        # Skip if Portrait
         if height > width:
             print(f"Skipping {filename} (Portrait: {width}x{height})")
             return None, None
             
-        # 2. Downres if width > 1280
+        # Resize if width > 1280
         if width > 1280:
-            print(f"Resizing {filename} ({width}x{height} -> 1280 width)...")
-            ratio = 1280 / width
-            new_height = int(height * ratio)
+            new_width = 1280
+            new_height = int(height * (1280 / width))
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
             
-            img_resized = img.resize((1280, new_height), Image.Resampling.LANCZOS)
-            
-            output_buffer = io.BytesIO()
-            
-            # Preserve EXIF using piexif
-            exif_bytes = None
-            if 'exif' in img.info:
-                try:
-                    exif_dict = piexif.load(img.info['exif'])
-                    # Remove MakerNote to prevent corruption
-                    if piexif.ExifIFD.MakerNote in exif_dict['Exif']:
-                        del exif_dict['Exif'][piexif.ExifIFD.MakerNote]
-                    exif_bytes = piexif.dump(exif_dict)
-                except Exception as e:
-                    print(f"  - Warning: Failed to process EXIF for {filename}: {e}")
-
-            if exif_bytes:
-                img_resized.save(output_buffer, format="JPEG", quality=85, exif=exif_bytes)
-            else:
-                img_resized.save(output_buffer, format="JPEG", quality=85)
+        # Handle EXIF
+        exif_dict = None
+        if "exif" in img.info:
+            try:
+                exif_dict = piexif.load(img.info["exif"])
+                # Remove MakerNote to prevent corruption
+                if "Exif" in exif_dict and piexif.ExifIFD.MakerNote in exif_dict["Exif"]:
+                    del exif_dict["Exif"][piexif.ExifIFD.MakerNote]
+            except Exception:
+                pass
                 
-            output_buffer.seek(0)
-            return f"{base_name}.jpg", output_buffer
+        # Save to BytesIO
+        output = io.BytesIO()
+        if exif_dict:
+             try:
+                exif_bytes = piexif.dump(exif_dict)
+                img.save(output, format="JPEG", quality=85, exif=exif_bytes)
+             except:
+                img.save(output, format="JPEG", quality=85)
         else:
-            # No resize needed, upload original file
-            # If it's HEIC, we might want to convert it? 
-            # The prompt didn't explicitly say to convert everything, but "downres" implies processing.
-            # If we don't resize, we just return the original bytes.
-            # However, if it's HEIC and we don't resize, the Android app might prefer JPEG.
-            # But let's stick to "downres if width > 1280".
-            # If it is < 1280, we upload as is.
-            with open(filepath, 'rb') as f:
-                return filename, io.BytesIO(f.read())
+            img.save(output, format="JPEG", quality=85)
+            
+        return filename, output.getvalue()
 
     except Exception as e:
         print(f"Error processing {filename}: {e}")
         return None, None
 
-def trigger_app_sync(app_host, port=4000):
-    print(f"\nTriggering sync on Android App at {app_host}:{port}...")
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(10) # 10 second timeout
+def read_line(sock):
+    """Read a line ending with \n from the socket."""
+    buf = b""
+    while True:
+        c = sock.recv(1)
+        if not c:
+            break
+        if c == b'\n':
+            break
+        buf += c
+    return buf.decode('utf-8')
+
+def sync_direct_push(app_host, port, local_dirs):
+    print(f"Connecting to Android App at {app_host}:{port}...")
+    
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(None) # Disable timeout for large transfers
+        try:
             s.connect((app_host, port))
+        except Exception as e:
+            print(f"Failed to connect: {e}")
+            return
+
+        # 1. Get List of Files
+        print("Fetching headers...")
+        list_cmd = json.dumps({"cmd": "list_files"})
+        s.sendall(list_cmd.encode('utf-8') + b'\n')
+        
+        response_str = read_line(s)
+        if not response_str:
+            print("Failed to get response from app.")
+            return
             
-            command = json.dumps({"cmd": "sync"})
-            s.sendall(command.encode('utf-8') + b'\n')
+        response = json.loads(response_str)
+        if response.get("status") != "ok":
+            print(f"Error getting file list: {response.get('message')}")
+            return
             
-            # Read response
-            response = s.recv(4096)
-            if response:
-                print(f"App response: {response.decode('utf-8').strip()}")
-            else:
-                print("No response from app.")
-    except Exception as e:
-        print(f"Failed to trigger app sync: {e}")
+        remote_files = set(response.get("files", []))
+        print(f"App has {len(remote_files)} files.")
 
-def sync_local_folders(host, user, password, remote_path, local_dirs):
-    ftp = connect_ftp(host, user, password, remote_path)
-    if not ftp:
-        return
-
-    # Get existing files on server
-    try:
-        existing_files = ftp.nlst()
-    except:
-        existing_files = []
-
-    processed_files = set()
-
-    for local_dir in local_dirs:
-        if not os.path.isdir(local_dir):
-            print(f"Warning: Local directory '{local_dir}' does not exist. Skipping.")
-            continue
-
-        # Iterate local files
-        print(f"Scanning local directory: {local_dir}")
-        for root, dirs, files in os.walk(local_dir):
-            for file in files:
-                filepath = os.path.join(root, file)
+        # 2. Process Local Files
+        processed_files = set()
+        
+        for local_dir in local_dirs:
+            if not os.path.isdir(local_dir):
+                print(f"Error: {local_dir} not found.")
+                return
                 
-                # Process image (resize, check portrait, etc)
-                upload_filename, image_data = process_image(filepath)
-                
-                if not upload_filename:
-                    continue
-                
-                if upload_filename in processed_files:
-                    print(f"Warning: Duplicate filename '{upload_filename}' found in multiple source directories. Skipping duplicate from {local_dir}.")
-                    continue
-
-                processed_files.add(upload_filename)
-                
-                if upload_filename in existing_files:
-                    print(f"Skipping {upload_filename} (exists)")
-                    continue
+            print(f"Scanning {local_dir}...")
+            for root, dirs, files in os.walk(local_dir):
+                for file in files:
+                    filepath = os.path.join(root, file)
                     
-                print(f"Uploading {upload_filename}...")
-                try:
-                    ftp.storbinary(f"STOR {upload_filename}", image_data)
-                except Exception as e:
-                    print(f"Failed to upload {upload_filename}: {e}")
+                    # We only process if we plan to upload OR if we need to mark it as 'kept'
+                    # But we don't know the final filename until we process it?
+                    # Actually, usually filename matches.
+                    # Optimization: Check if filename exists on remote BEFORE processing?
+                    # But we might need to re-upload if changed? For now, assume filename unique ID.
+                    
+                    # To be safe and consistent with previous logic, we process to get the 'clean' filename
+                    # (though it's usually just basename).
+                    
+                    # Let's just use basename for check to speed up?
+                    # "process_image" does filtering (portrait), which is important.
+                    # So we MUST process.
+                    
+                    upload_filename, image_data = process_image(filepath)
+                    if not upload_filename:
+                        continue
+                        
+                    processed_files.add(upload_filename)
+                    
+                    if upload_filename in remote_files:
+                        print(f"Skipping {upload_filename} (exists)")
+                        continue
+                        
+                    # Upload
+                    print(f"Uploading {upload_filename} ({len(image_data)} bytes)...")
+                    
+                    # Send Command
+                    cmd = json.dumps({
+                        "cmd": "receive_file",
+                        "name": upload_filename,
+                        "size": len(image_data)
+                    })
+                    s.sendall(cmd.encode('utf-8') + b'\n')
+                    
+                    # Wait for ready
+                    resp = json.loads(read_line(s))
+                    if resp.get("status") != "ready":
+                        print(f"App not ready: {resp.get('message')}")
+                        continue
+                        
+                    # Send Data
+                    s.sendall(image_data)
+                    
+                    # Wait for Ack
+                    resp = json.loads(read_line(s))
+                    if resp.get("status") != "ok":
+                         print(f"Upload failed: {resp.get('message')}")
+                    else:
+                         print("Success.")
 
-    # Delete orphans
-    print("\nChecking for files to delete on server...")
-    for existing_file in existing_files:
-        if existing_file not in processed_files:
-            # Be careful not to delete directories if nlst returns them
-            # Usually nlst returns simple names.
-            # We can try to delete.
-            print(f"Deleting {existing_file} (not in any local folder)...")
-            try:
-                ftp.delete(existing_file)
-            except Exception as e:
-                print(f"Failed to delete {existing_file}: {e}")
+        # 3. Delete Orphans
+        print("\nChecking for orphans...")
+        for remote_file in remote_files:
+            if remote_file not in processed_files:
+                print(f"Deleting {remote_file}...")
+                cmd = json.dumps({
+                    "cmd": "delete_file",
+                    "name": remote_file
+                })
+                s.sendall(cmd.encode('utf-8') + b'\n')
+                
+                resp = json.loads(read_line(s))
+                if resp.get("status") != "ok":
+                    print(f"Failed to delete: {resp.get('message')}")
+                    
+        print("Sync Complete.")
 
-    ftp.quit()
-    print("Sync complete.")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Sync Local Photos to FTP')
-    parser.add_argument('host', help='FTP Server Host')
-    parser.add_argument('user', help='FTP Username')
-    parser.add_argument('remote_path', help='Remote directory path to store photos')
+    parser = argparse.ArgumentParser(description='Sync Local Photos to SlideShowAi App Direct Push')
+    parser.add_argument('app_host', help='Android App Hostname/IP')
     parser.add_argument('local_dirs', nargs='+', help='Local directories containing photos')
-    parser.add_argument('--sync-app', help='Hostname or IP address of the Android App to trigger sync', default=None)
+    parser.add_argument('--port', type=int, default=4000, help='App TCP Port (default 4000)')
     
     args = parser.parse_args()
     
-    password = getpass.getpass(prompt=f"Enter password for {args.user}@{args.host}: ")
-    
-    sync_local_folders(args.host, args.user, password, args.remote_path, args.local_dirs)
-
-    if args.sync_app:
-        trigger_app_sync(args.sync_app)
+    sync_direct_push(args.app_host, args.port, args.local_dirs)

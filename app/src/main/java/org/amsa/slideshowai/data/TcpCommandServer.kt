@@ -15,7 +15,7 @@ class TcpCommandServer {
     private var serverSocket: ServerSocket? = null
     private var isRunning = false
 
-    suspend fun start(port: Int, handler: suspend (String, List<String>) -> String) {
+    suspend fun start(port: Int, handler: suspend (String, JSONObject, Socket) -> Unit) {
         withContext(Dispatchers.IO) {
             try {
                 serverSocket = ServerSocket(port)
@@ -40,30 +40,30 @@ class TcpCommandServer {
         }
     }
 
-    private suspend fun handleClient(socket: Socket, handler: suspend (String, List<String>) -> String) {
+    private suspend fun handleClient(socket: Socket, handler: suspend (String, JSONObject, Socket) -> Unit) {
         withContext(Dispatchers.IO) {
             try {
-                val reader = BufferedReader(InputStreamReader(socket.getInputStream()))
-                val writer = PrintWriter(socket.getOutputStream(), true)
-
-                val inputLine = reader.readLine()
-                if (inputLine != null) {
-                    Log.d("TcpCommandServer", "Received: $inputLine")
+                // We don't use a buffered reader because we might need to read raw bytes
+                val inputStream = socket.getInputStream()
+                
+                // Read line by line (for JSON commands)
+                // We implement a simple robust line reader that doesn't over-buffer
+                while (true) {
+                    val line = readLineFromStream(inputStream)
+                    if (line.isNullOrBlank()) break
+                    
+                    Log.d("TcpCommandServer", "Received: $line")
                     try {
-                        val json = JSONObject(inputLine)
+                        val json = JSONObject(line)
                         val cmd = json.optString("cmd")
-                        val argsJson = json.optJSONArray("args")
-                        val args = mutableListOf<String>()
-                        if (argsJson != null) {
-                            for (i in 0 until argsJson.length()) {
-                                args.add(argsJson.getString(i))
-                            }
-                        }
-
-                        val response = handler(cmd, args)
-                        writer.println(response)
+                        
+                        // Pass the socket/stream to the handler so it can read binary data if needed
+                        handler(cmd, json, socket)
+                        
+                        // Handler is responsible for writing response
                     } catch (e: Exception) {
                         Log.e("TcpCommandServer", "Error processing command", e)
+                         val writer = PrintWriter(socket.getOutputStream(), true)
                         val errorResponse = JSONObject().apply {
                             put("status", "error")
                             put("message", "Invalid JSON or command format: ${e.message}")
@@ -76,6 +76,20 @@ class TcpCommandServer {
                 Log.e("TcpCommandServer", "Error handling client", e)
             }
         }
+    }
+    
+    // Reads a line ending with \n, byte by byte to avoid buffering future binary data
+    private fun readLineFromStream(inputStream: java.io.InputStream): String? {
+        val stringBuilder = StringBuilder()
+        var char = inputStream.read()
+        while (char != -1) {
+            if (char == '\n'.code) {
+                return stringBuilder.toString()
+            }
+            stringBuilder.append(char.toChar())
+            char = inputStream.read()
+        }
+        return if (stringBuilder.isNotEmpty()) stringBuilder.toString() else null
     }
 
     fun stop() {
