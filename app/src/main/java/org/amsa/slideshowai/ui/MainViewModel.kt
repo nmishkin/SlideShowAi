@@ -12,6 +12,7 @@ import org.amsa.slideshowai.data.PhotoSyncRepository
 import org.amsa.slideshowai.data.PreferencesRepository
 import org.amsa.slideshowai.data.LocationRepository
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import java.io.File
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -72,7 +73,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 preferencesRepository.photoDuration
             ) { (host, path, user), qStart, qEnd, days, duration ->
                 Config(host, path, user, qStart, qEnd, days, duration)
-            }.collect { config ->
+            }.first().let { config ->
                 serverHost = config.host
                 serverPath = config.path
                 serverUsername = config.username
