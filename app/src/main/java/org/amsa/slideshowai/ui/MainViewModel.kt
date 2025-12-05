@@ -13,6 +13,9 @@ import org.amsa.slideshowai.data.PreferencesRepository
 import org.amsa.slideshowai.data.LocationRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
+import org.amsa.slideshowai.data.PhotoHistoryRepository
+import org.amsa.slideshowai.data.TcpCommandServer
+import org.json.JSONObject
 import java.io.File
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -20,7 +23,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val preferencesRepository = PreferencesRepository(application)
     private val photoSyncRepository = PhotoSyncRepository(application)
     private val locationRepository = LocationRepository(application)
-    private val photoHistoryRepository = org.amsa.slideshowai.data.PhotoHistoryRepository(application)
+    private val photoHistoryRepository = PhotoHistoryRepository(application)
 
     var statusMessage by mutableStateOf("Ready")
         private set
@@ -54,7 +57,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var isInitialized by mutableStateOf(false)
         private set
 
-    private val tcpServer = org.amsa.slideshowai.data.TcpCommandServer()
+    private val tcpServer = TcpCommandServer()
 
     init {
         // Start TCP Server
@@ -101,7 +104,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun handleTcpCommand(cmd: String, args: List<String>): String {
         return if (cmd == "sync") {
             if (serverPassword.isBlank()) {
-                org.json.JSONObject().apply {
+                JSONObject().apply {
                     put("status", "error")
                     put("message", "Password not set in app")
                 }.toString()
@@ -122,7 +125,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         refreshPhotos()
                     }
 
-                    org.json.JSONObject().apply {
+                    JSONObject().apply {
                         put("status", "success")
                         put("message", "Sync complete")
                         put("synced_count", result.size)
@@ -132,14 +135,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         statusMessage = "TCP Sync Error: ${e.message}"
                         syncErrorMessage = e.message
                     }
-                    org.json.JSONObject().apply {
+                    JSONObject().apply {
                         put("status", "error")
                         put("message", e.message ?: "Unknown sync error")
                     }.toString()
                 }
             }
         } else {
-            org.json.JSONObject().apply {
+            JSONObject().apply {
                 put("status", "error")
                 put("message", "Unknown command: $cmd")
             }.toString()
