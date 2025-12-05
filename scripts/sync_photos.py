@@ -92,11 +92,7 @@ def process_image(filepath):
         print(f"Error processing {filename}: {e}")
         return None, None
 
-def sync_local_folder(host, user, password, remote_path, local_dir):
-    if not os.path.isdir(local_dir):
-        print(f"Error: Local directory '{local_dir}' does not exist.")
-        return
-
+def sync_local_folders(host, user, password, remote_path, local_dirs):
     ftp = connect_ftp(host, user, password, remote_path)
     if not ftp:
         return
@@ -109,29 +105,38 @@ def sync_local_folder(host, user, password, remote_path, local_dir):
 
     processed_files = set()
 
-    # Iterate local files
-    print(f"Scanning local directory: {local_dir}")
-    for root, dirs, files in os.walk(local_dir):
-        for file in files:
-            filepath = os.path.join(root, file)
-            
-            # Process image (resize, check portrait, etc)
-            upload_filename, image_data = process_image(filepath)
-            
-            if not upload_filename:
-                continue
+    for local_dir in local_dirs:
+        if not os.path.isdir(local_dir):
+            print(f"Warning: Local directory '{local_dir}' does not exist. Skipping.")
+            continue
+
+        # Iterate local files
+        print(f"Scanning local directory: {local_dir}")
+        for root, dirs, files in os.walk(local_dir):
+            for file in files:
+                filepath = os.path.join(root, file)
                 
-            processed_files.add(upload_filename)
-            
-            if upload_filename in existing_files:
-                print(f"Skipping {upload_filename} (exists)")
-                continue
+                # Process image (resize, check portrait, etc)
+                upload_filename, image_data = process_image(filepath)
                 
-            print(f"Uploading {upload_filename}...")
-            try:
-                ftp.storbinary(f"STOR {upload_filename}", image_data)
-            except Exception as e:
-                print(f"Failed to upload {upload_filename}: {e}")
+                if not upload_filename:
+                    continue
+                
+                if upload_filename in processed_files:
+                    print(f"Warning: Duplicate filename '{upload_filename}' found in multiple source directories. Skipping duplicate from {local_dir}.")
+                    continue
+
+                processed_files.add(upload_filename)
+                
+                if upload_filename in existing_files:
+                    print(f"Skipping {upload_filename} (exists)")
+                    continue
+                    
+                print(f"Uploading {upload_filename}...")
+                try:
+                    ftp.storbinary(f"STOR {upload_filename}", image_data)
+                except Exception as e:
+                    print(f"Failed to upload {upload_filename}: {e}")
 
     # Delete orphans
     print("\nChecking for files to delete on server...")
@@ -140,7 +145,7 @@ def sync_local_folder(host, user, password, remote_path, local_dir):
             # Be careful not to delete directories if nlst returns them
             # Usually nlst returns simple names.
             # We can try to delete.
-            print(f"Deleting {existing_file} (not in local folder)...")
+            print(f"Deleting {existing_file} (not in any local folder)...")
             try:
                 ftp.delete(existing_file)
             except Exception as e:
@@ -154,10 +159,10 @@ if __name__ == '__main__':
     parser.add_argument('host', help='FTP Server Host')
     parser.add_argument('user', help='FTP Username')
     parser.add_argument('remote_path', help='Remote directory path to store photos')
-    parser.add_argument('local_dir', help='Local directory containing photos')
+    parser.add_argument('local_dirs', nargs='+', help='Local directories containing photos')
     
     args = parser.parse_args()
     
     password = getpass.getpass(prompt=f"Enter password for {args.user}@{args.host}: ")
     
-    sync_local_folder(args.host, args.user, password, args.remote_path, args.local_dir)
+    sync_local_folders(args.host, args.user, password, args.remote_path, args.local_dirs)
