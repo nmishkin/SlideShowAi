@@ -197,6 +197,7 @@ fun SlideshowScreen(
             val context = androidx.compose.ui.platform.LocalContext.current
             var location by remember { mutableStateOf<String?>(null) }
             val year = remember(currentFile) { getPhotoYear(currentFile) }
+            var showDetailsDialog by remember { mutableStateOf(false) }
             
             LaunchedEffect(currentFile) {
                 location = onGetLocation(currentFile)
@@ -216,7 +217,8 @@ fun SlideshowScreen(
                         Text(
                             text = year,
                             color = Color.White.copy(alpha = 0.9f),
-                            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+                            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.clickable { showDetailsDialog = true }
                         )
                     }
                     if (location != null) {
@@ -227,6 +229,21 @@ fun SlideshowScreen(
                         )
                     }
                 }
+            }
+
+            if (showDetailsDialog) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showDetailsDialog = false },
+                    title = { Text("Photo Details") },
+                    text = { Text("Filename: ${currentFile.name}") },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(
+                            onClick = { showDetailsDialog = false }
+                        ) {
+                            Text("OK")
+                        }
+                    }
+                )
             }
 
 
