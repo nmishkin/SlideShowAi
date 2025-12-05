@@ -1,4 +1,4 @@
-package org.amsa.slideshowai
+package info.amsa.slideshowai
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -12,10 +12,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import org.amsa.slideshowai.ui.MainViewModel
-import org.amsa.slideshowai.ui.SettingsScreen
-import org.amsa.slideshowai.ui.SlideshowScreen
-import org.amsa.slideshowai.ui.theme.SlideShowAiTheme
+import info.amsa.slideshowai.ui.MainViewModel
+import info.amsa.slideshowai.ui.SettingsScreen
+import info.amsa.slideshowai.ui.SlideshowScreen
+import info.amsa.slideshowai.ui.theme.SlideShowAiTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

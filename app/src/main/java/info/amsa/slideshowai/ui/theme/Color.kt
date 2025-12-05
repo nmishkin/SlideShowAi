@@ -1,4 +1,4 @@
-package org.amsa.slideshowai.ui.theme
+package info.amsa.slideshowai.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

@@ -1,4 +1,4 @@
-package org.amsa.slideshowai.data
+package info.amsa.slideshowai.data
 
 import android.content.Context
 import androidx.datastore.core.DataStore

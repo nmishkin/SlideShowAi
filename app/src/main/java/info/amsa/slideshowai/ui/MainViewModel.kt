@@ -1,19 +1,18 @@
-package org.amsa.slideshowai.ui
+package info.amsa.slideshowai.ui
 
 import android.app.Application
-import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import org.amsa.slideshowai.data.PreferencesRepository
-import org.amsa.slideshowai.data.LocationRepository
+import info.amsa.slideshowai.data.PreferencesRepository
+import info.amsa.slideshowai.data.LocationRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
-import org.amsa.slideshowai.data.PhotoHistoryRepository
-import org.amsa.slideshowai.data.TcpCommandServer
+import info.amsa.slideshowai.data.PhotoHistoryRepository
+import info.amsa.slideshowai.data.TcpCommandServer
 import org.json.JSONObject
 import java.io.File
 

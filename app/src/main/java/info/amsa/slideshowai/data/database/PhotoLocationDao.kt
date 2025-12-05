@@ -1,4 +1,4 @@
-package org.amsa.slideshowai.data.database
+package info.amsa.slideshowai.data.database
 
 import androidx.room.Dao
 import androidx.room.Insert
