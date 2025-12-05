@@ -14,8 +14,6 @@ def process_image(filepath):
     """
     Reads an image, checks dimensions, resizes if needed (max width 1280),
     preserves EXIF (sanitized), and returns (filename, bytes).
-    
-    Skips portrait photos (height > width).
     """
     try:
         filename = os.path.basename(filepath)
@@ -30,11 +28,6 @@ def process_image(filepath):
         # Pillow's ImageOps.exif_transpose handles rotation.
         img = ImageOps.exif_transpose(img)
         width, height = img.size
-        
-        # Skip if Portrait
-        if height > width:
-            print(f"Skipping {filename} (Portrait: {width}x{height})")
-            return None, None
             
         # Resize if width > 1280
         if width > 1280:

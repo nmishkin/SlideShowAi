@@ -62,7 +62,8 @@ class MainActivity : ComponentActivity() {
                                 photoDurationMillis = viewModel.getPhotoDurationMillis(),
                                 onBack = { navController.popBackStack() },
                                 onGetLocation = { file -> viewModel.getLocation(file) },
-                                onPhotoShown = { file -> viewModel.markPhotoAsShown(file) }
+                                onPhotoShown = { file -> viewModel.markPhotoAsShown(file) },
+                                onOrientationChanged = { isLandscape -> viewModel.updateOrientation(isLandscape) }
                             )
                         }
                     }

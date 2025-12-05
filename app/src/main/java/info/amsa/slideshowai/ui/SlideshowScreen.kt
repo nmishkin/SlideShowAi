@@ -28,8 +28,17 @@ fun SlideshowScreen(
     photoDurationMillis: Long,
     onBack: () -> Unit,
     onGetLocation: suspend (File) -> String?,
-    onPhotoShown: (File) -> Unit
+    onPhotoShown: (File) -> Unit,
+    onOrientationChanged: (Boolean) -> Unit
 ) {
+    // Detect Orientation
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    
+    LaunchedEffect(isLandscape) {
+        onOrientationChanged(isLandscape)
+    }
+
     // Shuffle the list so photos are shown in random order
     val shuffledItems = remember(mediaItems) { mediaItems.shuffled() }
     var currentIndex by remember(mediaItems) { mutableIntStateOf(0) }

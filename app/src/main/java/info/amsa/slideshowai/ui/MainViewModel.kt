@@ -163,29 +163,79 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         tcpServer.stop()
     }
     
+    private var isLandscape by mutableStateOf(true)
+
+    fun updateOrientation(landscape: Boolean) {
+        if (isLandscape != landscape) {
+            isLandscape = landscape
+            refreshPhotos()
+        }
+    }
+
     private fun refreshPhotos() {
         val dir = File(getApplication<Application>().filesDir, "slideshow_photos")
         val allPhotos = dir.listFiles()?.filter { isImageFile(it.name) }?.toList() ?: emptyList()
         localPhotos = allPhotos
         
+        // Filter by Orientation
+        val orientedPhotos = allPhotos.filter { file ->
+            isPhotoMatchingOrientation(file, isLandscape)
+        }
+
         // Smart Shuffle Logic
         val historyMap = photoHistoryRepository.getAllHistorySync()
         val threshold = System.currentTimeMillis() - (smartShuffleDays.toLong() * 24 * 60 * 60 * 1000)
         
-        val candidates = allPhotos.filter { photo ->
+        val candidates = orientedPhotos.filter { photo ->
             val lastShown = historyMap[photo.name] ?: 0L
             lastShown < threshold
         }
         
         slideshowPhotos = if (candidates.isNotEmpty()) {
-            candidates
+            candidates.shuffled()
         } else {
-            // If all photos shown recently, reset/use all (or sort by oldest shown)
-            // For now, just use all photos if we ran out of "fresh" ones
-            allPhotos
+            // If all photos shown recently, reset/use all matching orientation
+            orientedPhotos.shuffled()
         }
     }
-    
+
+    private fun isPhotoMatchingOrientation(file: File, targetLandscape: Boolean): Boolean {
+        return try {
+            val exif = androidx.exifinterface.media.ExifInterface(file)
+            val rotation = exif.getAttributeInt(androidx.exifinterface.media.ExifInterface.TAG_ORIENTATION, androidx.exifinterface.media.ExifInterface.ORIENTATION_NORMAL)
+            
+            var width = exif.getAttributeInt(androidx.exifinterface.media.ExifInterface.TAG_IMAGE_WIDTH, 0)
+            var height = exif.getAttributeInt(androidx.exifinterface.media.ExifInterface.TAG_IMAGE_LENGTH, 0)
+            
+            if (width == 0 || height == 0) {
+                 val options = android.graphics.BitmapFactory.Options()
+                 options.inJustDecodeBounds = true
+                 android.graphics.BitmapFactory.decodeFile(file.absolutePath, options)
+                 width = options.outWidth
+                 height = options.outHeight
+            }
+
+            if (width == 0 || height == 0) return true // Default to include if unknown
+            
+            val isRotated = rotation == androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_90 || 
+                            rotation == androidx.exifinterface.media.ExifInterface.ORIENTATION_ROTATE_270
+                            
+            val finalWidth = if (isRotated) height else width
+            val finalHeight = if (isRotated) width else height
+            
+            val isPhotoLandscape = finalWidth >= finalHeight
+            
+            isPhotoLandscape == targetLandscape
+        } catch (e: Exception) {
+            true // Default to include on error
+        }
+    }
+
+    private fun isImageFile(name: String): Boolean {
+        val extensions = listOf(".jpg", ".jpeg", ".png", ".webp", ".heic")
+        return extensions.any { name.lowercase().endsWith(it) }
+    }
+
     data class Config(val quietStart: String, val quietEnd: String, val shuffleDays: Int, val duration: String)
         
     fun updateServerConfig(qStart: String, qEnd: String, shuffleDays: String, duration: String) {
@@ -221,8 +271,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         syncErrorMessage = null
     }
 
-
-
     suspend fun getLocation(file: File): String? {
         return locationRepository.getLocation(file)
     }
@@ -231,10 +279,5 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             photoHistoryRepository.updateLastShown(file)
         }
-        }
-
-    private fun isImageFile(name: String): Boolean {
-        val extensions = listOf(".jpg", ".jpeg", ".png", ".webp", ".heic")
-        return extensions.any { name.lowercase().endsWith(it) }
     }
 }
