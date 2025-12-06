@@ -15,4 +15,10 @@ interface PhotoLocationDao {
 
     @Query("DELETE FROM photo_locations WHERE fileName = :fileName")
     fun deleteLocation(fileName: String)
+
+    @Query("SELECT * FROM photo_locations")
+    suspend fun getAllLocations(): List<PhotoLocation>
+
+    @Query("DELETE FROM photo_locations")
+    suspend fun deleteAllLocations()
 }

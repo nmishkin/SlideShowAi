@@ -83,4 +83,11 @@ class LocationRepository(private val context: Context) {
             return null
         }
     }
+    suspend fun getAllLocations(): List<PhotoLocation> {
+        return dao.getAllLocations()
+    }
+
+    suspend fun clearAllLocations() {
+        dao.deleteAllLocations()
+    }
 }

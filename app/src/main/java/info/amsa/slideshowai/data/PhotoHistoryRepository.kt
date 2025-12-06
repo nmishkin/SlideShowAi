@@ -34,4 +34,10 @@ class PhotoHistoryRepository(context: Context) {
     fun deleteHistory(fileName: String) {
         dao.deleteHistory(fileName)
     }
+
+    suspend fun clearAllHistory() {
+        withContext(Dispatchers.IO) {
+            dao.deleteAllHistory()
+        }
+    }
 }

@@ -148,6 +148,39 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                          writer.println(JSONObject().put("status", "error").put("message", "Incomplete transfer").toString())
                     }
                 }
+                "get_db" -> {
+                    val dbType = json.getString("db")
+                    if (dbType == "location") {
+                        val locations = locationRepository.getAllLocations()
+                        val jsonArray = org.json.JSONArray()
+                        locations.forEach { 
+                            jsonArray.put(JSONObject().put("fileName", it.fileName).put("location", it.location))
+                        }
+                        writer.println(JSONObject().put("status", "ok").put("data", jsonArray).toString())
+                    } else if (dbType == "history") {
+                        val history = photoHistoryRepository.getAllHistorySync()
+                        val jsonArray = org.json.JSONArray()
+                        history.forEach { (name, time) ->
+                             jsonArray.put(JSONObject().put("fileName", name).put("lastShown", time))
+                        }
+                         writer.println(JSONObject().put("status", "ok").put("data", jsonArray).toString())
+                    } else {
+                        writer.println(JSONObject().put("status", "error").put("message", "Unknown db: $dbType").toString())
+                    }
+                }
+                "clear_db" -> {
+                    val dbType = json.getString("db")
+                    if (dbType == "location") {
+                        locationRepository.clearAllLocations()
+                        writer.println(JSONObject().put("status", "ok").put("message", "Location DB cleared").toString())
+                    } else if (dbType == "history") {
+                        photoHistoryRepository.clearAllHistory()
+                         refreshPhotos() // Re-shuffle might depend on history
+                        writer.println(JSONObject().put("status", "ok").put("message", "History DB cleared").toString())
+                    } else {
+                        writer.println(JSONObject().put("status", "error").put("message", "Unknown db: $dbType").toString())
+                    }
+                }
                 else -> {
                     writer.println(JSONObject().put("status", "error").put("message", "Unknown command: $cmd").toString())
                 }

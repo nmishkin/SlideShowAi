@@ -12,6 +12,7 @@
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
             "args": [
+                "sync",
                 "localhost",
                 "/Users/mishkin/Pictures/Misc/For Slide Show/Photo Frame Base",
                 "/Users/mishkin/Pictures/Misc/For Slide Show/Misc. Downloads",
@@ -26,6 +27,7 @@
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
             "args": [
+                "sync",
                 "localhost",
                 "/Users/mishkin/Pictures/Misc/For Slide Show/tmp"
             ]

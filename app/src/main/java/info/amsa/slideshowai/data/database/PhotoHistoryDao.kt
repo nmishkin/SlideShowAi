@@ -20,4 +20,7 @@ interface PhotoHistoryDao {
 
     @Query("DELETE FROM photo_history WHERE fileName = :fileName")
     fun deleteHistory(fileName: String)
+
+    @Query("DELETE FROM photo_history")
+    suspend fun deleteAllHistory()
 }

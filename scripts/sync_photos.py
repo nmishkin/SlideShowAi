@@ -184,13 +184,82 @@ def sync_direct_push(app_host, port, local_dirs):
                     
         print("Sync Complete.")
 
+def show_db(app_host, port, db_name):
+    print(f"Connecting to Android App at {app_host}:{port}...")
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((app_host, port))
+            
+            cmd = json.dumps({"cmd": "get_db", "db": db_name})
+            s.sendall(cmd.encode('utf-8') + b'\n')
+            
+            response_str = read_line(s)
+            if response_str:
+                response = json.loads(response_str)
+                if response.get("status") == "ok":
+                    print(json.dumps(response.get("data"), indent=2))
+                else:
+                    print(f"Error: {response.get('message')}")
+            else:
+                print("No response from app.")
+    except Exception as e:
+        print(f"Connection failed: {e}")
+
+def clear_db(app_host, port, db_name):
+    print(f"Connecting to Android App at {app_host}:{port}...")
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((app_host, port))
+            
+            cmd = json.dumps({"cmd": "clear_db", "db": db_name})
+            s.sendall(cmd.encode('utf-8') + b'\n')
+            
+            response_str = read_line(s)
+            if response_str:
+                response = json.loads(response_str)
+                if response.get("status") == "ok":
+                    print(f"Success: {response.get('message')}")
+                else:
+                    print(f"Error: {response.get('message')}")
+            else:
+                print("No response from app.")
+    except Exception as e:
+        print(f"Connection failed: {e}")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Sync Local Photos to SlideShowAi App Direct Push')
-    parser.add_argument('app_host', help='Android App Hostname/IP')
-    parser.add_argument('local_dirs', nargs='+', help='Local directories containing photos')
-    parser.add_argument('--port', type=int, default=4000, help='App TCP Port (default 4000)')
+    parser = argparse.ArgumentParser(description='SlideShowAi Management Tool')
+    subparsers = parser.add_subparsers(dest='command', help='Command to run')
+    
+    # Sync Command
+    sync_parser = subparsers.add_parser('sync', help='Sync photos to the app')
+    sync_parser.add_argument('app_host', help='Android App Hostname/IP')
+    sync_parser.add_argument('local_dirs', nargs='+', help='Local directories containing photos')
+    sync_parser.add_argument('--port', type=int, default=4000, help='App TCP Port (default 4000)')
+    
+    # Show DB Command
+    show_parser = subparsers.add_parser('show-db', help='Show database contents')
+    show_parser.add_argument('app_host', help='Android App Hostname/IP')
+    show_parser.add_argument('--port', type=int, default=4000, help='App TCP Port (default 4000)')
+    show_parser.add_argument('--db', required=True, choices=['location', 'history'], help='Database to show')
+    
+    # Clear DB Command
+    clear_parser = subparsers.add_parser('clear-db', help='Clear database contents')
+    clear_parser.add_argument('app_host', help='Android App Hostname/IP')
+    clear_parser.add_argument('--port', type=int, default=4000, help='App TCP Port (default 4000)')
+    clear_parser.add_argument('--db', required=True, choices=['location', 'history'], help='Database to clear')
     
     args = parser.parse_args()
     
-    sync_direct_push(args.app_host, args.port, args.local_dirs)
+    if args.command == 'sync':
+        sync_direct_push(args.app_host, args.port, args.local_dirs)
+    elif args.command == 'show-db':
+        show_db(args.app_host, args.port, args.db)
+    elif args.command == 'clear-db':
+        # Confirm action
+        confirm = input(f"Are you sure you want to CLEAR the {args.db} database? (yes/no): ")
+        if confirm.lower() == 'yes':
+             clear_db(args.app_host, args.port, args.db)
+        else:
+            print("Aborted.")
+    else:
+        parser.print_help()
