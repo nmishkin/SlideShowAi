@@ -242,6 +242,46 @@ def clear_db(app_host, port, db_name):
     except Exception as e:
         print(f"Connection failed: {e}")
 
+def analyze_orientation(local_dirs):
+    print("Analyzing photo orientation...")
+    total = 0
+    landscape = 0
+    portrait = 0
+    skipped = 0
+    
+    for local_dir in local_dirs:
+        if not os.path.isdir(local_dir):
+            print(f"Warning: {local_dir} not found.")
+            continue
+            
+        for root, dirs, files in os.walk(local_dir):
+            for file in files:
+                filepath = os.path.join(root, file)
+                
+                # Basic extension check (optional but speeds things up)
+                if not file.lower().endswith(('.jpg', '.jpeg', '.png', '.webp', '.heic')):
+                    continue
+
+                try:
+                    img = Image.open(filepath)
+                    img = ImageOps.exif_transpose(img)
+                    width, height = img.size
+                    
+                    total += 1
+                    if width >= height:
+                        landscape += 1
+                    else:
+                        portrait += 1
+                except Exception:
+                    skipped += 1
+                    
+    print("\nOrientation Report")
+    print("-" * 30)
+    print(f"Total Photos: {total}")
+    print(f"Landscape:    {landscape} ({landscape/total*100:.1f}%)" if total else "Landscape:    0")
+    print(f"Portrait:     {portrait} ({portrait/total*100:.1f}%)" if total else "Portrait:     0")
+    print(f"Skipped/Error: {skipped}")
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='SlideShowAi Management Tool')
     subparsers = parser.add_subparsers(dest='command', help='Command to run')
@@ -263,6 +303,10 @@ if __name__ == '__main__':
     clear_parser.add_argument('app_host', help='Android App Hostname/IP')
     clear_parser.add_argument('--port', type=int, default=4000, help='App TCP Port (default 4000)')
     clear_parser.add_argument('--db', required=True, choices=['location', 'history'], help='Database to clear')
+
+    # Report Orientation Command
+    report_parser = subparsers.add_parser('report-orientation', help='Report count of landscape/portrait photos')
+    report_parser.add_argument('local_dirs', nargs='+', help='Local directories containing photos')
     
     args = parser.parse_args()
     
@@ -277,5 +321,7 @@ if __name__ == '__main__':
              clear_db(args.app_host, args.port, args.db)
         else:
             print("Aborted.")
+    elif args.command == 'report-orientation':
+        analyze_orientation(args.local_dirs)
     else:
         parser.print_help()
