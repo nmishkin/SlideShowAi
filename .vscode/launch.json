@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: sync_photos",
+            "name": "Python Debugger: manage_app.py",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
@@ -20,7 +20,7 @@
             ]
         },
         {
-            "name": "Python Debugger: sync_photos tmp",
+            "name": "Python Debugger: manage_app.py tmp",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
