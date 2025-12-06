@@ -6,6 +6,7 @@ import json
 from PIL import Image, ImageOps
 import pillow_heif
 import piexif
+import datetime
 
 # Register HEIF opener
 pillow_heif.register_heif_opener()
@@ -197,7 +198,22 @@ def show_db(app_host, port, db_name):
             if response_str:
                 response = json.loads(response_str)
                 if response.get("status") == "ok":
-                    print(json.dumps(response.get("data"), indent=2))
+                    data = response.get("data")
+                    if db_name == "history":
+                         # Print Table Header
+                        print(f"{'File Name':<40} | {'Last Shown (Local Time)':<30}")
+                        print("-" * 75)
+                        for item in data:
+                            filename = item.get("fileName")
+                            ts = item.get("lastShown")
+                            if ts and isinstance(ts, (int, float)):
+                                dt = datetime.datetime.fromtimestamp(ts / 1000.0) # Local time by default
+                                ts_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+                            else:
+                                ts_str = str(ts)
+                            print(f"{filename:<40} | {ts_str:<30}")
+                    else:
+                        print(json.dumps(data, indent=2))
                 else:
                     print(f"Error: {response.get('message')}")
             else:
