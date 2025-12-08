@@ -109,6 +109,11 @@ fun SettingsScreen(
                     Text(statusMessage, style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text("Photos Available: $photoCount", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    val buildDate = java.util.Date(info.amsa.slideshowai.BuildConfig.BUILD_TIME)
+                    val format = java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault())
+                    Text("Build: ${format.format(buildDate)}", style = MaterialTheme.typography.labelSmall)
                 }
             }
             
