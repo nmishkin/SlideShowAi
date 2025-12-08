@@ -3,6 +3,8 @@ import os
 import io
 import socket
 import json
+import subprocess
+import sys
 from PIL import Image, ImageOps
 import pillow_heif
 import piexif
@@ -374,6 +376,12 @@ if __name__ == '__main__':
     delete_all_parser.add_argument('app_host', help='Android App Hostname/IP')
     delete_all_parser.add_argument('--port', type=int, default=4000, help='App TCP Port (default 4000)')
 
+    # Install APK Command
+    install_parser = subparsers.add_parser('install-apk', help='Install and start release APK via ADB')
+    install_parser.add_argument('app_host', help='Android Device IP')
+    install_parser.add_argument('--adb-port', type=int, default=5555, help='ADB Port (default: 5555)')
+    install_parser.add_argument('--apk-path', default='../app/build/outputs/apk/release/app-release.apk', help='Path to APK (default: ../app/build/outputs/apk/release/app-release.apk)')
+
     args = parser.parse_args()
     
     if args.command == 'sync':
@@ -397,5 +405,41 @@ if __name__ == '__main__':
              delete_all_photos(args.app_host, args.port)
         else:
             print("Aborted.")
+    elif args.command == 'install-apk':
+        adb_path = os.path.expanduser('~/Library/Android/sdk/platform-tools/adb')
+        if not os.path.exists(adb_path):
+             # Try assuming it's in path
+             adb_path = 'adb'
+        
+        apk_path = args.apk_path
+        app_host = args.app_host
+        adb_port = args.adb_port
+        
+        if not os.path.exists(apk_path):
+             print(f"Error: APK not found at {apk_path}")
+             sys.exit(1)
+             
+        print(f"Installing {apk_path} on {app_host}:{adb_port}...")
+        try:
+             # 1. Connect
+             target_device = f"{app_host}:{adb_port}"
+             print(f"Connecting to {target_device}...")
+             subprocess.run([adb_path, 'connect', target_device], check=True)
+             
+             # 2. Install
+             print("Installing APK...")
+             # -s <host>:<port> targets the specific device
+             subprocess.run([adb_path, '-s', target_device, 'install', '-r', apk_path], check=True)
+             print("Install successful.")
+             
+             # 3. Start
+             print("Starting app...")
+             subprocess.run([adb_path, '-s', target_device, 'shell', 'am', 'start', '-n', 'info.amsa.slideshowai/.MainActivity'], check=True)
+             print("App started.")
+             
+        except subprocess.CalledProcessError as e:
+             print(f"ADB command failed: {e}")
+        except FileNotFoundError:
+             print("Error: 'adb' not found. Please verify Android SDK installation.")
     else:
         parser.print_help()
