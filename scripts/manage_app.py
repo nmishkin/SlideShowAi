@@ -184,7 +184,7 @@ def sync_direct_push(app_host, port, local_dirs):
                         continue
                         
                     # Upload
-                    print(f"Uploading {upload_filename} ({len(image_data)} bytes)...")
+                    print(f"Uploading {upload_filename} ({len(image_data)} bytes)...", end=' ', flush=True)
                     
                     # Send Command
                     cmd = json.dumps({
@@ -197,7 +197,7 @@ def sync_direct_push(app_host, port, local_dirs):
                     # Wait for ready
                     resp = json.loads(read_line(s))
                     if resp.get("status") != "ready":
-                        print(f"App not ready: {resp.get('message')}")
+                        print(f"\n    App not ready: {resp.get('message')}")
                         continue
                         
                     # Send Data
@@ -206,7 +206,7 @@ def sync_direct_push(app_host, port, local_dirs):
                     # Wait for Ack
                     resp = json.loads(read_line(s))
                     if resp.get("status") != "ok":
-                         print(f"Upload failed: {resp.get('message')}")
+                         print(f"\n    Upload failed: {resp.get('message')}")
                     else:
                          print("Success.")
 
