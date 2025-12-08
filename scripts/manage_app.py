@@ -282,6 +282,27 @@ def analyze_orientation(local_dirs):
     print(f"Portrait:     {portrait} ({portrait/total*100:.1f}%)" if total else "Portrait:     0")
     print(f"Skipped/Error: {skipped}")
 
+def delete_all_photos(app_host, port):
+    print(f"Connecting to Android App at {app_host}:{port}...")
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((app_host, port))
+            
+            cmd = json.dumps({"cmd": "delete_all_files"})
+            s.sendall(cmd.encode('utf-8') + b'\n')
+            
+            response_str = read_line(s)
+            if response_str:
+                response = json.loads(response_str)
+                if response.get("status") == "ok":
+                    print(f"Success: {response.get('message')}")
+                else:
+                    print(f"Error: {response.get('message')}")
+            else:
+                print("No response from app.")
+    except Exception as e:
+        print(f"Connection failed: {e}")
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='SlideShowAi Management Tool')
     subparsers = parser.add_subparsers(dest='command', help='Command to run')
@@ -308,6 +329,11 @@ if __name__ == '__main__':
     report_parser = subparsers.add_parser('report-orientation', help='Report count of landscape/portrait photos')
     report_parser.add_argument('local_dirs', nargs='+', help='Local directories containing photos')
     
+    # Delete All Command
+    delete_all_parser = subparsers.add_parser('delete-all', help='Delete ALL photos and data from app')
+    delete_all_parser.add_argument('app_host', help='Android App Hostname/IP')
+    delete_all_parser.add_argument('--port', type=int, default=4000, help='App TCP Port (default 4000)')
+
     args = parser.parse_args()
     
     if args.command == 'sync':
@@ -323,5 +349,13 @@ if __name__ == '__main__':
             print("Aborted.")
     elif args.command == 'report-orientation':
         analyze_orientation(args.local_dirs)
+    elif args.command == 'delete-all':
+        # Confirm action
+        print("WARNING: This will delete ALL photos and database entries from the Android app.")
+        confirm = input("Are you absolutely sure? (yes/no): ")
+        if confirm.lower() == 'yes':
+             delete_all_photos(args.app_host, args.port)
+        else:
+            print("Aborted.")
     else:
         parser.print_help()

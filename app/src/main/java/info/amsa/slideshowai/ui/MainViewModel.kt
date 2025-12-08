@@ -181,6 +181,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         writer.println(JSONObject().put("status", "error").put("message", "Unknown db: $dbType").toString())
                     }
                 }
+                "delete_all_files" -> {
+                    val dir = File(getApplication<Application>().filesDir, "slideshow_photos")
+                    if (dir.exists()) {
+                        dir.listFiles()?.forEach { it.delete() }
+                    }
+                    
+                    // Clear DBs as well
+                    locationRepository.clearAllLocations()
+                    photoHistoryRepository.clearAllHistory()
+                    refreshPhotos()
+                    
+                    writer.println(JSONObject().put("status", "ok").put("message", "All photos and data deleted").toString())
+                }
                 else -> {
                     writer.println(JSONObject().put("status", "error").put("message", "Unknown command: $cmd").toString())
                 }
