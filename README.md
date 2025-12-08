@@ -39,6 +39,12 @@ pip install Pillow pillow-heif piexif
 
 Use the `manage_app.py` script to interact with the running Android app. Ensure your computer and the Android device are on the same Wi-Fi network.
 
+### Install APK
+```bash
+python3 scripts/manage_app.py install-apk --adb-port <ADB_PORT> <ANDROID_IP>
+```
+Get the ADB port from the Android device from the _Settings app > General settings > Developer options > Wireless debugging_. (Note: Tap on the _Wireless debugging_ button to show the port number.)
+    
 ### Sync Photos (Smart Resize)
 Syncs photos from local directories to the app. Automatically resizes them to fill the device screen.
 ```bash
@@ -79,3 +85,31 @@ python3 scripts/manage_app.py delete-all <ANDROID_IP>
 -   **Data**: Room Database for tracking photo history and location cache.
 -   **Networking**: Custom TCP protocol (`TcpCommandServer`) handling JSON commands and binary image streams.
 -   **Image Processing**: Python (`Pillow`) handles heavy lifting (resizing/cropping) on the host machine before transfer.
+
+## Building
+```bash 
+    ./gradlew assembleRelease # (or assembleDebug)
+```
+
+## Cheat sheet
+
+### Install APK
+* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py install-apk --apk-path ~/src/SlideShowAi/app/build/outputs/apk/release/app-release.apk --adb-port <ADB_PORT> photoframe1`
+
+### Sync Photos
+* `pushd "$HOME/Pictures/Misc/For Slide Show"`
+* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py sync photoframe1 'Photo Frame' 'Misc. Downloads' 'Photo Frame Base'`
+* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py sync photoframe2 'Photo Frame (People)' 'Photo Frame Base (People)'`
+
+### Report Orientation
+* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py report-orientation /Users/mishkin/Pictures/SlideShowAi`
+
+### View Database Contents
+* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py show-db photoframe1 --db history`
+* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py show-db photoframe1 --db location`
+
+### Clear Database
+* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py clear-db photoframe1 --db history`
+
+### Delete All Photos
+* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py delete-all photoframe1`
