@@ -11,49 +11,94 @@ import datetime
 # Register HEIF opener
 pillow_heif.register_heif_opener()
 
-def process_image(filepath):
+def get_device_resolution(app_host, port):
+    print(f"Fetching device resolution from {app_host}:{port}...")
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((app_host, port))
+            cmd = json.dumps({"cmd": "get_device_info"})
+            s.sendall(cmd.encode('utf-8') + b'\n')
+            
+            response_str = read_line(s)
+            if response_str:
+                response = json.loads(response_str)
+                if response.get("status") == "ok":
+                    width = response.get("width")
+                    height = response.get("height")
+                    print(f"Device Resolution: {width}x{height}")
+                    return width, height
+                else:
+                    print(f"Error getting info: {response.get('message')}")
+    except Exception as e:
+        print(f"Failed to get device info: {e}")
+    return 1920, 1080 # Fallback
+
+def process_image(filepath, target_width, target_height):
     """
-    Reads an image, checks dimensions, resizes if needed (max width 1280),
-    preserves EXIF (sanitized), and returns (filename, bytes).
+    Reads an image, handles orientation, resizes (aspect fill) and crops 
+    to exactly match target_width x target_height.
+    Returns (filename, bytes).
     """
     try:
         filename = os.path.basename(filepath)
         
-        # Load EXIF first to check orientation if needed, but Pillow handles it mostly.
-        # However, for the 'Skip Portrait' logic, we need dimensions.
-        
         img = Image.open(filepath)
-        width, height = img.size
         
-        # Check orientation via EXIF to be sure about dimensions?
-        # Pillow's ImageOps.exif_transpose handles rotation.
+        # 1. Handle EXIF Orientation
         img = ImageOps.exif_transpose(img)
-        width, height = img.size
+        
+        # 2. Determine Smart Target Dimensions
+        # We need to map the image's orientation to the device's screen dimensions.
+        img_w, img_h = img.size
+        
+        # Determine if image is landscape or portrait
+        is_img_landscape = img_w >= img_h
+        
+        # Determine device main dimensions
+        dev_max = max(target_width, target_height)
+        dev_min = min(target_width, target_height)
+        
+        # Set target dimensions based on image orientation
+        if is_img_landscape:
+            final_w = dev_max
+            final_h = dev_min
+        else:
+            final_w = dev_min
+            final_h = dev_max
             
-        # Resize if width > 1280
-        if width > 1280:
-            new_width = 1280
-            new_height = int(height * (1280 / width))
-            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        # 3. Aspect Fill Resize
+        # Calculate scale to cover
+        scale_w = final_w / img_w
+        scale_h = final_h / img_h
+        scale = max(scale_w, scale_h)
+        
+        new_w = int(img_w * scale)
+        new_h = int(img_h * scale)
+        
+        img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        
+        # 4. Center Crop
+        left = (new_w - final_w) / 2
+        top = (new_h - final_h) / 2
+        right = (new_w + final_w) / 2
+        bottom = (new_h + final_h) / 2
+        
+        img = img.crop((left, top, right, bottom))
             
-        # Handle EXIF
-        exif_dict = None
-        if "exif" in img.info:
-            try:
-                exif_dict = piexif.load(img.info["exif"])
-                # Remove MakerNote to prevent corruption
-                if "Exif" in exif_dict and piexif.ExifIFD.MakerNote in exif_dict["Exif"]:
-                    del exif_dict["Exif"][piexif.ExifIFD.MakerNote]
-            except Exception:
-                pass
-                
+        # 5. Handle EXIF
+        # We will try to preserve the original EXIF block exactly as is.
+        # This prevents piexif from potentially creating incompatible structures for Android.
+        # Drawback: Internal thumbnail/MakerNote might be stale, but Location should be readable.
+        
+        exif_bytes = img.info.get("exif")
+        
         # Save to BytesIO
         output = io.BytesIO()
-        if exif_dict:
+        if exif_bytes:
              try:
-                exif_bytes = piexif.dump(exif_dict)
                 img.save(output, format="JPEG", quality=85, exif=exif_bytes)
-             except:
+             except Exception as e:
+                print(f"Warning: Failed to save with EXIF: {e}")
                 img.save(output, format="JPEG", quality=85)
         else:
             img.save(output, format="JPEG", quality=85)
@@ -78,6 +123,9 @@ def read_line(sock):
 
 def sync_direct_push(app_host, port, local_dirs):
     print(f"Connecting to Android App at {app_host}:{port}...")
+    
+    # 0. Get Device Resolution
+    dev_w, dev_h = get_device_resolution(app_host, port)
     
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.settimeout(None) # Disable timeout for large transfers
@@ -118,20 +166,12 @@ def sync_direct_push(app_host, port, local_dirs):
                 for file in files:
                     filepath = os.path.join(root, file)
                     
-                    # We only process if we plan to upload OR if we need to mark it as 'kept'
-                    # But we don't know the final filename until we process it?
-                    # Actually, usually filename matches.
-                    # Optimization: Check if filename exists on remote BEFORE processing?
-                    # But we might need to re-upload if changed? For now, assume filename unique ID.
+                    # Basic extension check to skip non-images early
+                    if not file.lower().endswith(('.jpg', '.jpeg', '.png', '.webp', '.heic')):
+                         continue
                     
-                    # To be safe and consistent with previous logic, we process to get the 'clean' filename
-                    # (though it's usually just basename).
-                    
-                    # Let's just use basename for check to speed up?
-                    # "process_image" does filtering (portrait), which is important.
-                    # So we MUST process.
-                    
-                    upload_filename, image_data = process_image(filepath)
+                    # Process with Smart Resize
+                    upload_filename, image_data = process_image(filepath, dev_w, dev_h)
                     if not upload_filename:
                         continue
                         

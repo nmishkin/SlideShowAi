@@ -41,10 +41,28 @@ class LocationRepository(private val context: Context) {
         try {
             Log.d("LocationRepository", "Fetching location for file: ${file.name}")
             val exif = ExifInterface(file)
-            val latLong = exif.latLong ?: return null
+            var latLong = exif.latLong
             
-            val latitude = latLong[0]
-            val longitude = latLong[1]
+            if (latLong == null) {
+                // Fallback: Try to read raw attributes and debug
+                val lat = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE)
+                val latRef = exif.getAttribute(ExifInterface.TAG_GPS_LATITUDE_REF)
+                val lon = exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE)
+                val lonRef = exif.getAttribute(ExifInterface.TAG_GPS_LONGITUDE_REF)
+                
+                Log.d("LocationRepository", "Standard latLong null. Raw: Lat=$lat Ref=$latRef, Lon=$lon Ref=$lonRef")
+                
+                if (lat != null && lon != null) {
+                    // Start of rudimentary parser if needed, or simply return null after logging for now
+                    // If we want to fix it, we'd need to parse "d/1, m/1, s/1000" style strings
+                    latLong = parseLatLong(lat, latRef, lon, lonRef)
+                }
+            }
+
+            val validLatLong = latLong ?: return null
+            
+            val latitude = validLatLong[0]
+            val longitude = validLatLong[1]
             val latLongStr = String.format("%.4f, %.4f", latitude, longitude)
 
             val geocoder = Geocoder(context, Locale.getDefault())
@@ -89,5 +107,45 @@ class LocationRepository(private val context: Context) {
 
     suspend fun clearAllLocations() {
         dao.deleteAllLocations()
+    }
+    
+    // Helper to parse GPS "degrees/1, minutes/1, seconds/1" string format manually
+    private fun parseLatLong(lat: String, latRef: String?, lon: String, lonRef: String?): DoubleArray? {
+        try {
+            val latVal = convertRationalLatLonToDouble(lat, latRef)
+            val lonVal = convertRationalLatLonToDouble(lon, lonRef)
+            return doubleArrayOf(latVal, lonVal)
+        } catch (e: Exception) {
+            Log.e("LocationRepository", "Manual GPS parsing failed", e)
+            return null
+        }
+    }
+
+    private fun convertRationalLatLonToDouble(rationalString: String, ref: String?): Double {
+        val parts = rationalString.split(",", " ").filter { it.isNotBlank() }
+        
+        var degrees = 0.0
+        var minutes = 0.0
+        var seconds = 0.0
+        
+        if (parts.isNotEmpty()) degrees = parseRational(parts[0])
+        if (parts.size > 1) minutes = parseRational(parts[1])
+        if (parts.size > 2) seconds = parseRational(parts[2])
+        
+        var result = degrees + (minutes / 60.0) + (seconds / 3600.0)
+        
+        if (ref == "S" || ref == "W") {
+            result = -result
+        }
+        
+        return result
+    }
+
+    private fun parseRational(rat: String): Double {
+        val parts = rat.split("/")
+        if (parts.size == 2) {
+            return parts[0].toDouble() / parts[1].toDouble()
+        }
+        return parts[0].toDouble()
     }
 }

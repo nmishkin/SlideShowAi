@@ -194,6 +194,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     
                     writer.println(JSONObject().put("status", "ok").put("message", "All photos and data deleted").toString())
                 }
+                "get_device_info" -> {
+                    val displayMetrics = android.content.res.Resources.getSystem().displayMetrics
+                    val width = displayMetrics.widthPixels
+                    val height = displayMetrics.heightPixels
+                    writer.println(JSONObject().put("status", "ok").put("width", width).put("height", height).toString())
+                }
                 else -> {
                     writer.println(JSONObject().put("status", "error").put("message", "Unknown command: $cmd").toString())
                 }
