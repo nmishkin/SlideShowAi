@@ -90,29 +90,3 @@ python3 scripts/manage_app.py delete-all <ANDROID_IP>
 ```bash 
     ./gradlew assembleRelease # (or assembleDebug)
 ```
-
-## Cheat sheet
-
-### Install APK
-
-Requires the tablet is configured for Wi-Fi debugging and has been paired with the computer (see [this](https://developer.android.com/tools/adb#connect-to-a-device-over-wi-fi) for details).
-
-* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py install-apk --apk-path ~/src/SlideShowAi/app/build/outputs/apk/release/app-release.apk --adb-port <ADB_PORT> photoframe1`
-
-### Sync Photos
-* `pushd "$HOME/Pictures/Misc/For Slide Show"`
-* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py sync photoframe1 'Photo Frame' 'Misc. Downloads' 'Photo Frame Base'`
-* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py sync photoframe2 'Photo Frame (People)' 'Photo Frame Base (People)'`
-
-### Report Orientation
-* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py report-orientation /Users/mishkin/Pictures/SlideShowAi`
-
-### View Database Contents
-* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py show-db photoframe1 --db history`
-* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py show-db photoframe1 --db location`
-
-### Clear Database
-* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py clear-db photoframe1 --db history`
-
-### Delete All Photos
-* `~/src/SlideShowAi/.venv/bin/python ~/src/SlideShowAi/scripts/manage_app.py delete-all photoframe1`
