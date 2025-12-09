@@ -13,6 +13,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -218,7 +221,9 @@ fun SlideshowScreen(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(16.dp)
+                        .windowInsetsPadding(WindowInsets.safeDrawing)
                         .background(Color.Black.copy(alpha = 0.3f), androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                        .clickable { showDetailsDialog = true }
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     horizontalAlignment = Alignment.End
                 ) {
@@ -226,8 +231,7 @@ fun SlideshowScreen(
                         Text(
                             text = year,
                             color = Color.White.copy(alpha = 0.9f),
-                            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.clickable { showDetailsDialog = true }
+                            style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
                         )
                     }
                     if (location != null) {

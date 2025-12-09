@@ -16,10 +16,18 @@ import info.amsa.slideshowai.ui.MainViewModel
 import info.amsa.slideshowai.ui.SettingsScreen
 import info.amsa.slideshowai.ui.SlideshowScreen
 import info.amsa.slideshowai.ui.theme.SlideShowAiTheme
+import androidx.activity.enableEdgeToEdge
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        
+        // Hide System Bars for Immersive Mode
+        val windowInsetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+        windowInsetsController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        windowInsetsController.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+        
         setContent {
             SlideShowAiTheme {
                 val navController = rememberNavController()
