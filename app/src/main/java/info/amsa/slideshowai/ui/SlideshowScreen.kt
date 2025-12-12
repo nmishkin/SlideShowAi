@@ -201,7 +201,7 @@ fun SlideshowScreen(
             Image(
                 painter = rememberAsyncImagePainter(currentFile),
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
             )
             

@@ -79,13 +79,12 @@ def process_image(filepath, target_width, target_height):
         
         img = img.resize((new_w, new_h), Image.Resampling.LANCZOS)
         
-        # 4. Center Crop
-        left = (new_w - final_w) / 2
-        top = (new_h - final_h) / 2
-        right = (new_w + final_w) / 2
-        bottom = (new_h + final_h) / 2
-        
-        img = img.crop((left, top, right, bottom))
+        # 4. Center Crop (Skipped as per user request to keep full zoomed image)
+        # left = (new_w - final_w) / 2
+        # top = (new_h - final_h) / 2
+        # right = (new_w + final_w) / 2
+        # bottom = (new_h + final_h) / 2
+        # img = img.crop((left, top, right, bottom))
             
         # 5. Handle EXIF
         # We will try to preserve the original EXIF block exactly as is.
