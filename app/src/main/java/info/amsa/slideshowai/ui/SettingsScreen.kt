@@ -33,6 +33,7 @@ fun SettingsScreen(
     onConfigChange: (String, String, String, String) -> Unit,
     onClearSyncError: () -> Unit,
     onStartSlideshow: () -> Unit,
+    onResumeSlideshow: () -> Unit,
     photoCount: Int
 ) {
     Scaffold(
@@ -119,6 +120,14 @@ fun SettingsScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
+            Button(
+                onClick = onResumeSlideshow,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = photoCount > 0
+            ) {
+                Text("Resume Slideshow")
+            }
+
             Button(
                 onClick = onStartSlideshow,
                 modifier = Modifier.fillMaxWidth(),

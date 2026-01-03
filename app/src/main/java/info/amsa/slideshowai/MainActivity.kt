@@ -58,7 +58,11 @@ class MainActivity : ComponentActivity() {
                                     viewModel.updateServerConfig(qStart, qEnd, days, duration)
                                 },
                                 onClearSyncError = { viewModel.clearSyncError() },
-                                onStartSlideshow = { navController.navigate("slideshow") },
+                                onStartSlideshow = { 
+                                    viewModel.startNewSlideshow()
+                                    navController.navigate("slideshow") 
+                                },
+                                onResumeSlideshow = { navController.navigate("slideshow") },
                                 photoCount = viewModel.localPhotos.size
                             )
                         }
@@ -71,7 +75,9 @@ class MainActivity : ComponentActivity() {
                                 onBack = { navController.popBackStack() },
                                 onGetLocation = { file -> viewModel.getLocation(file) },
                                 onPhotoShown = { file -> viewModel.markPhotoAsShown(file) },
-                                onOrientationChanged = { isLandscape -> viewModel.updateOrientation(isLandscape) }
+                                onOrientationChanged = { isLandscape -> viewModel.updateOrientation(isLandscape) },
+                                currentIndex = viewModel.currentSlideshowIndex,
+                                onIndexChanged = { index -> viewModel.updateSlideshowIndex(index) }
                             )
                         }
                     }

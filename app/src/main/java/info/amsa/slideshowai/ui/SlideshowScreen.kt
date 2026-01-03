@@ -32,7 +32,9 @@ fun SlideshowScreen(
     onBack: () -> Unit,
     onGetLocation: suspend (File) -> String?,
     onPhotoShown: (File) -> Unit,
-    onOrientationChanged: (Boolean) -> Unit
+    onOrientationChanged: (Boolean) -> Unit,
+    currentIndex: Int,
+    onIndexChanged: (Int) -> Unit
 ) {
     // Detect Orientation
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
@@ -42,9 +44,6 @@ fun SlideshowScreen(
         onOrientationChanged(isLandscape)
     }
 
-    // Shuffle the list so photos are shown in random order
-    val shuffledItems = remember(mediaItems) { mediaItems.shuffled() }
-    var currentIndex by remember(mediaItems) { mutableIntStateOf(0) }
     var isQuietHour by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -134,19 +133,10 @@ fun SlideshowScreen(
         }
     }
 
-    var isFirstRun by remember(mediaItems) { mutableStateOf(true) }
-
-    LaunchedEffect(shuffledItems, isQuietHour) {
-        if (!isFirstRun && !isQuietHour && shuffledItems.isNotEmpty()) {
-            currentIndex = (currentIndex + 1) % shuffledItems.size
-        }
-        isFirstRun = false
-
-        while (true) {
-            delay(photoDurationMillis)
-            if (!isQuietHour && shuffledItems.isNotEmpty()) {
-                currentIndex = (currentIndex + 1) % shuffledItems.size
-            }
+    LaunchedEffect(mediaItems, isQuietHour, currentIndex, photoDurationMillis) {
+        delay(photoDurationMillis)
+        if (!isQuietHour && mediaItems.isNotEmpty()) {
+            onIndexChanged((currentIndex + 1) % mediaItems.size)
         }
     }
     
@@ -178,10 +168,10 @@ fun SlideshowScreen(
                         val threshold = 50f
                         if (totalDrag > threshold) {
                             // Swipe Right -> Previous
-                            currentIndex = if (currentIndex - 1 < 0) shuffledItems.size - 1 else currentIndex - 1
+                            onIndexChanged(if (currentIndex - 1 < 0) mediaItems.size - 1 else currentIndex - 1)
                         } else if (totalDrag < -threshold) {
                             // Swipe Left -> Next
-                            currentIndex = (currentIndex + 1) % shuffledItems.size
+                            onIndexChanged((currentIndex + 1) % mediaItems.size)
                         }
                     },
                     onHorizontalDrag = { change, dragAmount ->
@@ -192,10 +182,10 @@ fun SlideshowScreen(
             }
             .clickable(onClick = onBack)
     ) {
-        if (shuffledItems.isNotEmpty()) {
+        if (mediaItems.isNotEmpty()) {
             // Safety check for index
-            val safeIndex = currentIndex.coerceIn(shuffledItems.indices)
-            val currentFile = shuffledItems[safeIndex]
+            val safeIndex = currentIndex.coerceIn(mediaItems.indices)
+            val currentFile = mediaItems[safeIndex]
             Log.d("SlideshowScreen", "Displaying file: ${currentFile.name}")
 
             Image(

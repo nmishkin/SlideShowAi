@@ -45,6 +45,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var slideshowPhotos by mutableStateOf<List<File>>(emptyList())
         private set
 
+    var currentSlideshowIndex by mutableIntStateOf(0)
+        private set
+
     var isInitialized by mutableStateOf(false)
         private set
 
@@ -249,6 +252,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // If all photos shown recently, reset/use all matching orientation
             orientedPhotos.shuffled()
         }
+    }
+
+    fun startNewSlideshow() {
+        refreshPhotos()
+        currentSlideshowIndex = 0
+    }
+
+    fun updateSlideshowIndex(index: Int) {
+        currentSlideshowIndex = index
     }
 
     private fun isPhotoMatchingOrientation(file: File, targetLandscape: Boolean): Boolean {
