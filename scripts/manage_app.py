@@ -5,6 +5,7 @@ import socket
 import json
 import subprocess
 import sys
+import hashlib
 from PIL import Image, ImageOps
 import pillow_heif
 import piexif
@@ -104,7 +105,18 @@ def process_image(filepath, target_width, target_height):
         else:
             img.save(output, format="JPEG", quality=85)
             
-        return filename, output.getvalue()
+        # 6. Generate Unique Stable Filename
+        abs_path = os.path.abspath(filepath)
+        path_hash = hashlib.md5(abs_path.encode('utf-8')).hexdigest()[:8]
+        
+        # Get stem (ignore extension)
+        base = os.path.basename(filepath)
+        last_dot = base.rfind('.')
+        stem = base[:last_dot] if last_dot != -1 else base
+        
+        unique_filename = f"{stem}_{path_hash}.jpg"
+            
+        return unique_filename, output.getvalue()
 
     except Exception as e:
         print(f"Error processing {filename}: {e}")

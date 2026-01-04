@@ -88,5 +88,5 @@ python3 scripts/manage_app.py delete-all <ANDROID_IP>
 
 ## Building
 ```bash 
-    ./gradlew assembleRelease # (or assembleDebug)
+    ./gradlew assembleRelease assembleDebug
 ```
